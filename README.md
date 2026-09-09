@@ -1,3 +1,26 @@
+# Proflect customer portal
+
+The customer portal includes registration, secure sign-in, password recovery,
+an authenticated warranty dashboard, and session-safe logout.
+
+## Local setup
+
+```bash
+composer install
+npm install
+php artisan migrate
+npm run build
+php artisan serve
+```
+
+Password reset notifications use Laravel's configured mailer. The local
+configuration writes messages to `storage/logs/laravel.log`; set the `MAIL_*`
+environment values to an SMTP or transactional mail provider before production.
+
+Run the complete authentication test suite with `php artisan test`.
+
+---
+
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
 <p align="center">
