@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Mail\WelcomeCustomerMail;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use Tests\TestCase;
@@ -24,6 +26,7 @@ class AuthenticationTest extends TestCase
 
     public function test_customer_can_register_and_is_signed_in(): void
     {
+        Mail::fake();
         $response = $this->post(route('register'), [
             'name' => 'Rahul Kulkarni',
             'email' => 'rahul@example.com',
@@ -32,10 +35,11 @@ class AuthenticationTest extends TestCase
             'terms' => '1',
         ]);
 
-        $response->assertRedirect(route('dashboard'));
+        $response->assertRedirect(route('subscription.index'));
         $this->assertAuthenticated();
         $this->assertDatabaseHas('users', ['email' => 'rahul@example.com']);
         $this->assertTrue(Hash::check('Protection123', User::first()->password));
+        Mail::assertSent(WelcomeCustomerMail::class);
     }
 
     public function test_registration_requires_a_strong_confirmed_password_and_terms(): void
@@ -52,7 +56,7 @@ class AuthenticationTest extends TestCase
 
     public function test_customer_can_sign_in_and_view_dashboard(): void
     {
-        $user = User::factory()->create(['password' => Hash::make('Protection123')]);
+        $user = User::factory()->create(['password' => Hash::make('Protection123'), 'onboarding_completed_at' => now()]);
 
         $this->post(route('login'), [
             'email' => $user->email,
@@ -65,7 +69,7 @@ class AuthenticationTest extends TestCase
 
     public function test_invalid_credentials_are_rejected(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['onboarding_completed_at' => now()]);
 
         $this->from(route('login'))->post(route('login'), [
             'email' => $user->email,

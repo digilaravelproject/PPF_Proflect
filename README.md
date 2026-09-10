@@ -3,6 +3,10 @@
 The customer portal includes registration, secure sign-in, password recovery,
 an authenticated warranty dashboard, and session-safe logout.
 
+It also includes customer onboarding with admin-managed protection plans,
+Razorpay Standard Checkout, payment and welcome emails, customer/admin profile
+management, and a separately guarded administration portal.
+
 ## Local setup
 
 ```bash
@@ -16,6 +20,13 @@ php artisan serve
 Password reset notifications use Laravel's configured mailer. The local
 configuration writes messages to `storage/logs/laravel.log`; set the `MAIL_*`
 environment values to an SMTP or transactional mail provider before production.
+
+Set `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` in `.env` using Razorpay Test
+Mode keys first. Every payment uses a server-created order and is fulfilled only
+after server-side signature, amount, currency, order, and status verification.
+
+The seeded local administrator is `admin@ppf.com` with password `admin123`.
+Change this password immediately outside local development.
 
 Run the complete authentication test suite with `php artisan test`.
 

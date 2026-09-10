@@ -46,7 +46,9 @@ class AuthenticatedSessionController extends Controller
         RateLimiter::clear($key);
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        $destination = $request->user()->onboarding_completed_at ? route('dashboard', absolute: false) : route('subscription.index', absolute: false);
+
+        return redirect()->intended($destination);
     }
 
     public function destroy(Request $request): RedirectResponse

@@ -14,7 +14,8 @@
             <a class="active" href="{{ route('dashboard') }}"><span>⌂</span> Overview</a>
             <a href="#warranty"><span>◇</span> My warranty</a>
             <a href="#claims"><span>▣</span> Claims</a>
-            <a href="#vehicle"><span>▱</span> Vehicle details</a>
+            <a href="{{ route('profile.edit') }}"><span>♙</span> My profile</a>
+            <a href="{{ route('subscription.index') }}"><span>◇</span> Protection plans</a>
             <a href="#documents"><span>⇩</span> Documents</a>
         </nav>
         <div class="sidebar__help">
@@ -37,7 +38,7 @@
                 <h1>My Warranty</h1>
             </div>
             <div class="profile-menu">
-                <span class="profile-menu__avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</span>
+                <a href="{{ route('profile.edit') }}" class="profile-menu__avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</a>
                 <span><b>{{ auth()->user()->name }}</b><small>{{ auth()->user()->email }}</small></span>
             </div>
         </header>
@@ -55,11 +56,12 @@
                 <a href="#claims" class="button button--dark">Make a claim <span>→</span></a>
             </section>
 
+            @if ($subscription)
             <section class="warranty-card" id="warranty">
                 <div class="warranty-card__accent"></div>
                 <div class="warranty-card__top">
                     <span class="status-pill"><i></i> PROGRAM ACTIVE</span>
-                    <span class="warranty-card__id">WARRANTY #PF-204831</span>
+                    <span class="warranty-card__id">WARRANTY #PF-{{ str_pad($subscription->id, 6, '0', STR_PAD_LEFT) }}</span>
                 </div>
                 <div class="warranty-card__body">
                     <div class="vehicle-art" aria-hidden="true">
@@ -68,11 +70,11 @@
                     </div>
                     <div class="warranty-card__details">
                         <span class="eyebrow">YOUR VEHICLE</span>
-                        <h3>Toyota Fortuner</h3>
-                        <p class="reg-number">MH12AB1234</p>
+                        <h3>Your registered vehicle</h3>
+                        <p class="reg-number">PROFILE DETAILS AVAILABLE</p>
                         <div class="plan-row">
                             <span class="plan-badge">G</span>
-                            <span><b>Gold Plan</b><small>5 years · 5 square metres</small></span>
+                            <span><b>{{ $subscription->plan->name }}</b><small>{{ $subscription->plan->duration_years }} years · {{ rtrim(rtrim($subscription->plan->coverage_sqm, '0'), '.') }} square metres</small></span>
                         </div>
                     </div>
                     <div class="coverage-ring" style="--progress: 0deg">
@@ -80,12 +82,15 @@
                     </div>
                 </div>
                 <div class="warranty-card__footer">
-                    <div><span>START DATE</span><b>16 Aug 2026</b></div>
-                    <div><span>VALID UNTIL</span><b>15 Aug 2031</b></div>
+                    <div><span>START DATE</span><b>{{ $subscription->starts_at->format('d M Y') }}</b></div>
+                    <div><span>VALID UNTIL</span><b>{{ $subscription->ends_at->format('d M Y') }}</b></div>
                     <div><span>PROGRAM STATUS</span><b class="text-green">Active & protected</b></div>
                     <a href="#documents">View certificate →</a>
                 </div>
             </section>
+            @else
+            <section class="panel no-plan-card"><span class="eyebrow">PROTECTION PLAN</span><h3>No active plan yet</h3><p>You skipped plan selection. You can explore the available protection options whenever you are ready.</p><a href="{{ route('subscription.index') }}" class="button button--dark">View protection plans <span>→</span></a></section>
+            @endif
 
             <section class="dashboard-grid">
                 <article class="panel" id="claims">
@@ -102,12 +107,12 @@
                     <span class="eyebrow">COVERAGE SUMMARY</span>
                     <h3>Your protection at a glance</h3>
                     <div class="coverage-bar"><span style="width: 0%"></span></div>
-                    <div class="coverage-labels"><span><b>0 m²</b> used</span><span><b>5 m²</b> available</span></div>
+                    <div class="coverage-labels"><span><b>0 m²</b> used</span><span><b>{{ $subscription ? rtrim(rtrim($subscription->plan->coverage_sqm, '0'), '.') : 0 }} m²</b> available</span></div>
                     <hr>
-                    <div class="detail-row"><span>Plan type</span><b>Gold</b></div>
-                    <div class="detail-row"><span>Term</span><b>5 years</b></div>
-                    <div class="detail-row"><span>Covered panels</span><b>Full vehicle</b></div>
-                    <div class="protected-note"><span>✓</span><p><b>You’re fully protected</b><br>Your program is active and ready when you need it.</p></div>
+                    <div class="detail-row"><span>Plan type</span><b>{{ $subscription?->plan->name ?? 'No active plan' }}</b></div>
+                    <div class="detail-row"><span>Term</span><b>{{ $subscription ? $subscription->plan->duration_years.' years' : '—' }}</b></div>
+                    <div class="detail-row"><span>Covered panels</span><b>{{ $subscription ? 'Full vehicle' : '—' }}</b></div>
+                    <div class="protected-note"><span>{{ $subscription ? '✓' : '!' }}</span><p><b>{{ $subscription ? 'You’re fully protected' : 'Protection not active' }}</b><br>{{ $subscription ? 'Your program is active and ready when you need it.' : 'Choose a plan to activate replacement protection.' }}</p></div>
                 </article>
             </section>
         </div>

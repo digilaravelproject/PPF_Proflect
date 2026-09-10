@@ -3,13 +3,16 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Mail\WelcomeCustomerMail;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
+use Throwable;
 
 class RegisteredUserController extends Controller
 {
@@ -30,9 +33,14 @@ class RegisteredUserController extends Controller
         $user = User::create($validated);
 
         event(new Registered($user));
+        try {
+            Mail::to($user)->send(new WelcomeCustomerMail($user));
+        } catch (Throwable $exception) {
+            report($exception);
+        }
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect()->route('dashboard')->with('status', 'Welcome to Proflect. Your account is ready.');
+        return redirect()->route('subscription.index')->with('status', 'Welcome to Proflect. Choose a protection plan or skip for now.');
     }
 }
