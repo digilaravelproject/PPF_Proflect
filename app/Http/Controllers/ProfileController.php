@@ -20,7 +20,7 @@ class ProfileController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'], 'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($request->user())],
-            'phone' => ['nullable', 'string', 'max:20'], 'current_password' => ['nullable', 'required_with:password', 'current_password'],
+            'phone' => ['required', 'string', 'max:20'], 'current_password' => ['nullable', 'required_with:password', 'current_password'],
             'password' => ['nullable', 'confirmed', Password::min(8)->letters()->mixedCase()->numbers()],
         ]);
         if (! empty($validated['password'])) {

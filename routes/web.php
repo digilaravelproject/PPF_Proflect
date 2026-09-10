@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
+use App\Http\Controllers\Admin\CustomerController as AdminCustomerController;
+use App\Http\Controllers\Admin\ClaimController as AdminClaimController;
+use App\Http\Controllers\Admin\PaymentController as AdminPaymentController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\PlanController as AdminPlanController;
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
@@ -9,6 +12,7 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ClaimController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SubscriptionController;
@@ -37,6 +41,7 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
     Route::get('/subscription/checkout/{plan}', [SubscriptionController::class, 'checkout'])->name('subscription.checkout');
+    Route::post('/subscription/free/{plan}', [SubscriptionController::class, 'activateFree'])->middleware('throttle:10,1')->name('subscription.free');
     Route::post('/subscription/skip', [SubscriptionController::class, 'skip'])->name('subscription.skip');
     Route::post('/payments/order', [PaymentController::class, 'order'])->middleware('throttle:10,1')->name('payments.order');
     Route::post('/payments/verify', [PaymentController::class, 'verify'])->middleware('throttle:15,1')->name('payments.verify');
@@ -44,6 +49,11 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware('onboarded')->group(function () {
         Route::get('/dashboard', DashboardController::class)->name('dashboard');
+        Route::get('/claims', [ClaimController::class, 'index'])->name('claims.index');
+        Route::get('/claims/create', [ClaimController::class, 'create'])->name('claims.create');
+        Route::post('/claims', [ClaimController::class, 'store'])->middleware('throttle:10,1')->name('claims.store');
+        Route::get('/claims/{claim}', [ClaimController::class, 'show'])->name('claims.show');
+        Route::get('/claims/{claim}/photos/{index}', [ClaimController::class, 'photo'])->whereNumber('index')->name('claims.photo');
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
         Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     });
@@ -56,6 +66,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::middleware('admin.auth')->group(function () {
         Route::get('/dashboard', AdminDashboardController::class)->name('dashboard');
         Route::resource('plans', AdminPlanController::class)->except('show');
+        Route::resource('customers', AdminCustomerController::class)->except('show');
+        Route::get('/claims/report', [AdminClaimController::class, 'report'])->name('claims.report');
+        Route::get('/claims/{claim}/photos/{index}', [AdminClaimController::class, 'photo'])->whereNumber('index')->name('claims.photo');
+        Route::resource('claims', AdminClaimController::class)->only(['index', 'show', 'update', 'destroy']);
+        Route::get('/payments/report', [AdminPaymentController::class, 'report'])->name('payments.report');
+        Route::resource('payments', AdminPaymentController::class)->only(['index', 'show']);
         Route::get('/profile', [AdminProfileController::class, 'edit'])->name('profile.edit');
         Route::put('/profile', [AdminProfileController::class, 'update'])->name('profile.update');
         Route::post('/logout', [AdminAuthController::class, 'destroy'])->name('logout');

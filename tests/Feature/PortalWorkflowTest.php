@@ -62,4 +62,70 @@ class PortalWorkflowTest extends TestCase
         $this->actingAs($user)->postJson(route('payments.verify'), $payload)->assertOk();
         $this->assertDatabaseCount('subscriptions', 1);
     }
+
+    public function test_customer_can_activate_the_free_plan_without_payment_for_fifteen_days_only_once(): void
+    {
+        $user = User::factory()->create(['onboarding_completed_at' => null]);
+        $plan = Plan::query()->where('slug', 'free')->firstOrFail();
+
+        $this->actingAs($user)->post(route('subscription.free', $plan))
+            ->assertRedirect(route('subscription.success'));
+
+        $subscription = $user->subscriptions()->firstOrFail();
+        $this->assertNotNull($subscription->payment_id);
+        $this->assertEquals(15, $subscription->starts_at->diffInDays($subscription->ends_at));
+        $this->assertNotNull($user->fresh()->onboarding_completed_at);
+        $this->assertDatabaseHas('payments', [
+            'id' => $subscription->payment_id,
+            'gateway' => 'free',
+            'gateway_payment_id' => null,
+            'amount' => 0,
+            'status' => 'paid',
+        ]);
+
+        $this->actingAs($user)->get(route('subscription.success'))
+            ->assertOk()
+            ->assertSee('SUBSCRIPTION SUMMARY')
+            ->assertSee('No payment required');
+
+        $this->actingAs($user)->post(route('subscription.free', $plan));
+        $this->assertDatabaseCount('subscriptions', 1);
+        $this->assertDatabaseCount('payments', 1);
+
+        $user = $user->fresh();
+        $this->travel(16)->days();
+        $this->actingAs($user)->get(route('dashboard'))->assertOk()->assertSee('No active plan yet');
+        $this->travelBack();
+    }
+
+    public function test_admin_can_create_update_list_and_delete_customers(): void
+    {
+        $admin = Admin::create(['name' => 'Admin', 'email' => 'admin@ppf.com', 'password' => 'admin123']);
+
+        $this->actingAs($admin, 'admin')->post(route('admin.customers.store'), [
+            'name' => 'Test Customer',
+            'email' => 'customer@example.com',
+            'phone' => '9876543210',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'onboarding_completed' => 1,
+        ])->assertRedirect(route('admin.customers.index'));
+
+        $customer = User::query()->where('email', 'customer@example.com')->firstOrFail();
+        $this->actingAs($admin, 'admin')->get(route('admin.customers.index'))
+            ->assertOk()
+            ->assertSee('Test Customer');
+
+        $this->actingAs($admin, 'admin')->put(route('admin.customers.update', $customer), [
+            'name' => 'Updated Customer',
+            'email' => 'customer@example.com',
+            'phone' => '9999999999',
+            'onboarding_completed' => 1,
+        ])->assertRedirect(route('admin.customers.index'));
+        $this->assertDatabaseHas('users', ['id' => $customer->id, 'name' => 'Updated Customer']);
+
+        $this->actingAs($admin, 'admin')->delete(route('admin.customers.destroy', $customer))
+            ->assertSessionHas('status');
+        $this->assertDatabaseMissing('users', ['id' => $customer->id]);
+    }
 }

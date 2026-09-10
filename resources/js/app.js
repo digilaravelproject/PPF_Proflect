@@ -89,3 +89,123 @@ document.querySelectorAll('[data-payment-button]').forEach((button) => {
         }
     });
 });
+
+document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
+    let step = 1;
+    const form = wizard.querySelector('form');
+    const panelInputs = [...wizard.querySelectorAll('[data-panel-input]')];
+    const photoInput = wizard.querySelector('[data-photo-input]');
+    const description = wizard.querySelector('textarea[name="description"]');
+    const vehicleMake = wizard.querySelector('[name="vehicle_make"]');
+    const vehicleModel = wizard.querySelector('[name="vehicle_model"]');
+    const registration = wizard.querySelector('[name="registration_number"]');
+
+    const showStep = (nextStep) => {
+        step = nextStep;
+        wizard.querySelectorAll('[data-step]').forEach((section) => section.classList.toggle('active', Number(section.dataset.step) === step));
+        wizard.querySelectorAll('[data-step-target]').forEach((button) => {
+            const target = Number(button.dataset.stepTarget);
+            button.classList.toggle('active', target === step);
+            button.classList.toggle('done', target < step);
+        });
+        window.scrollTo({top: wizard.offsetTop - 20, behavior: 'smooth'});
+    };
+
+    const syncPanels = () => {
+        panelInputs.forEach((input) => wizard.querySelector(`[data-panel-shape="${input.value}"]`)?.classList.toggle('selected', input.checked));
+    };
+
+    wizard.querySelectorAll('[data-panel-shape]').forEach((shape) => shape.addEventListener('click', () => {
+        const input = wizard.querySelector(`[data-panel-input][value="${shape.dataset.panelShape}"]`);
+        if (input) {
+            input.checked = !input.checked;
+            syncPanels();
+        }
+    }));
+    panelInputs.forEach((input) => input.addEventListener('change', syncPanels));
+
+    const renderPhotos = () => {
+        const preview = wizard.querySelector('[data-photo-previews]');
+        preview.innerHTML = '';
+        [...(photoInput.files || [])].slice(0, 6).forEach((file, index) => {
+            const item = document.createElement('div');
+            item.className = 'photo-preview-item';
+            const image = document.createElement('img');
+            image.alt = file.name;
+            image.src = URL.createObjectURL(file);
+            image.onload = () => URL.revokeObjectURL(image.src);
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'photo-remove';
+            remove.setAttribute('aria-label', `Remove ${file.name}`);
+            remove.title = 'Remove photo';
+            remove.textContent = '×';
+            remove.addEventListener('click', () => {
+                const transfer = new DataTransfer();
+                [...photoInput.files].forEach((current, currentIndex) => {
+                    if (currentIndex !== index) transfer.items.add(current);
+                });
+                photoInput.files = transfer.files;
+                renderPhotos();
+            });
+            item.append(image, remove);
+            preview.appendChild(item);
+        });
+    };
+    photoInput?.addEventListener('change', renderPhotos);
+
+    const review = () => {
+        const selected = panelInputs.filter((input) => input.checked);
+        const list = wizard.querySelector('[data-review-panels]');
+        list.innerHTML = '';
+        selected.forEach((input) => {
+            const item = document.createElement('li');
+            item.textContent = input.nextElementSibling?.textContent || input.value;
+            list.appendChild(item);
+        });
+        const count = photoInput.files?.length || 0;
+        wizard.querySelector('[data-review-photos]').textContent = `${count} photo${count === 1 ? '' : 's'} ready to submit`;
+        wizard.querySelector('[data-review-description]').textContent = description.value.trim() || 'No additional details provided.';
+        wizard.querySelector('[data-review-vehicle]').textContent = `${vehicleMake.value.trim()} ${vehicleModel.value.trim()}`;
+        wizard.querySelector('[data-review-registration]').textContent = registration.value.trim().toUpperCase();
+        const photoStrip = wizard.querySelector('[data-review-photo-strip]');
+        photoStrip.innerHTML = '';
+        [...(photoInput.files || [])].forEach((file) => {
+            const image = document.createElement('img');
+            image.alt = file.name;
+            image.src = URL.createObjectURL(file);
+            image.onload = () => URL.revokeObjectURL(image.src);
+            photoStrip.appendChild(image);
+        });
+    };
+
+    wizard.querySelectorAll('[data-next]').forEach((button) => button.addEventListener('click', () => {
+        if (step === 1) {
+            const invalidVehicleField = [...wizard.querySelectorAll('.vehicle-fields input[required]')].find((input) => !input.checkValidity());
+            if (invalidVehicleField) {
+                invalidVehicleField.reportValidity();
+                return;
+            }
+            if (!panelInputs.some((input) => input.checked)) {
+                alert('Select at least one damaged panel.');
+                return;
+            }
+        }
+        if (step === 2) {
+            const count = photoInput.files?.length || 0;
+            if (count < 1 || count > 6) {
+                alert('Choose between 1 and 6 damage photos.');
+                return;
+            }
+            review();
+        }
+        showStep(Math.min(3, step + 1));
+    }));
+    wizard.querySelectorAll('[data-prev]').forEach((button) => button.addEventListener('click', () => showStep(Math.max(1, step - 1))));
+    wizard.querySelectorAll('[data-step-target]').forEach((button) => button.addEventListener('click', () => {
+        const target = Number(button.dataset.stepTarget);
+        if (target < step) showStep(target);
+    }));
+    form?.addEventListener('submit', () => form.querySelector('button[type="submit"]')?.setAttribute('disabled', 'disabled'));
+    syncPanels();
+});

@@ -18,7 +18,7 @@ class PaymentController extends Controller
     public function order(Request $request, RazorpayService $razorpay): JsonResponse
     {
         $validated = $request->validate(['plan_id' => ['required', 'integer', 'exists:plans,id']]);
-        $plan = Plan::query()->whereKey($validated['plan_id'])->where('is_active', true)->firstOrFail();
+        $plan = Plan::query()->whereKey($validated['plan_id'])->where('is_active', true)->where('price', '>', 0)->firstOrFail();
         try {
             $order = $razorpay->createOrder($plan, $request->user());
             Payment::create([
@@ -51,7 +51,7 @@ class PaymentController extends Controller
                     return;
                 }
                 $locked->update(['gateway_payment_id' => $attributes['razorpay_payment_id'], 'status' => 'paid', 'paid_at' => now(), 'metadata' => ['method' => $gatewayPayment['method'] ?? null]]);
-                Subscription::create(['user_id' => $request->user()->id, 'plan_id' => $locked->plan_id, 'payment_id' => $locked->id, 'status' => 'active', 'starts_at' => now(), 'ends_at' => now()->addYears($payment->plan->duration_years)]);
+                Subscription::create(['user_id' => $request->user()->id, 'plan_id' => $locked->plan_id, 'payment_id' => $locked->id, 'status' => 'active', 'starts_at' => now(), 'ends_at' => $payment->plan->subscriptionEndsAt()]);
                 $request->user()->update(['onboarding_completed_at' => now()]);
             });
         } catch (Throwable $exception) {

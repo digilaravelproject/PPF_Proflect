@@ -56,8 +56,8 @@ class PlanController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'], 'slug' => ['nullable', 'string', 'max:120', Rule::unique('plans')->ignore($plan)],
-            'description' => ['nullable', 'string', 'max:1000'], 'price_rupees' => ['required', 'numeric', 'min:1', 'max:10000000'],
-            'duration_years' => ['required', 'integer', 'min:1', 'max:20'], 'coverage_sqm' => ['required', 'numeric', 'min:0', 'max:9999'],
+            'description' => ['nullable', 'string', 'max:1000'], 'price_rupees' => ['required', 'numeric', 'min:0', 'max:10000000'],
+            'duration_years' => ['required', 'integer', 'min:0', 'max:20'], 'duration_days' => ['nullable', 'integer', 'min:1', 'max:3650'], 'coverage_sqm' => ['required', 'numeric', 'min:0', 'max:9999'],
             'features_text' => ['nullable', 'string', 'max:3000'], 'accent' => ['required', Rule::in(['silver', 'gold', 'black'])],
             'is_active' => ['nullable', 'boolean'], 'sort_order' => ['required', 'integer', 'min:0', 'max:999'],
         ]);
@@ -65,9 +65,16 @@ class PlanController extends Controller
         if (Plan::query()->where('slug', $slug)->when($plan, fn ($query) => $query->where('id', '!=', $plan->id))->exists()) {
             throw ValidationException::withMessages(['slug' => 'This plan slug is already in use.']);
         }
+        if ((int) $data['duration_years'] === 0 && empty($data['duration_days'])) {
+            throw ValidationException::withMessages(['duration_days' => 'Enter a duration in days when duration in years is zero.']);
+        }
+        if ((float) $data['price_rupees'] === 0.0 && empty($data['duration_days'])) {
+            throw ValidationException::withMessages(['duration_days' => 'Free plans must have a duration in days.']);
+        }
 
         return ['name' => $data['name'], 'slug' => $slug, 'description' => $data['description'] ?? null,
             'price' => (int) round($data['price_rupees'] * 100), 'currency' => 'INR', 'duration_years' => $data['duration_years'],
+            'duration_days' => $data['duration_days'] ?? null,
             'coverage_sqm' => $data['coverage_sqm'], 'features' => array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $data['features_text'] ?? '')))),
             'accent' => $data['accent'], 'is_active' => $request->boolean('is_active'), 'sort_order' => $data['sort_order']];
     }

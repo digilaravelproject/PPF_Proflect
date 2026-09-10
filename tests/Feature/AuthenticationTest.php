@@ -30,6 +30,7 @@ class AuthenticationTest extends TestCase
         $response = $this->post(route('register'), [
             'name' => 'Rahul Kulkarni',
             'email' => 'rahul@example.com',
+            'phone' => '9876543210',
             'password' => 'Protection123',
             'password_confirmation' => 'Protection123',
             'terms' => '1',
@@ -37,7 +38,7 @@ class AuthenticationTest extends TestCase
 
         $response->assertRedirect(route('subscription.index'));
         $this->assertAuthenticated();
-        $this->assertDatabaseHas('users', ['email' => 'rahul@example.com']);
+        $this->assertDatabaseHas('users', ['email' => 'rahul@example.com', 'phone' => '9876543210']);
         $this->assertTrue(Hash::check('Protection123', User::first()->password));
         Mail::assertSent(WelcomeCustomerMail::class);
     }
@@ -49,7 +50,7 @@ class AuthenticationTest extends TestCase
             'email' => 'rahul@example.com',
             'password' => 'password',
             'password_confirmation' => 'different',
-        ])->assertSessionHasErrors(['password', 'terms']);
+        ])->assertSessionHasErrors(['phone', 'password', 'terms']);
 
         $this->assertGuest();
     }

@@ -21,6 +21,13 @@ class DatabaseSeeder extends Seeder
             'password' => 'admin123',
         ]);
 
+        Plan::updateOrCreate(['slug' => 'free'], [
+            'name' => 'Free Plan', 'description' => 'Try Proflect protection free for 15 days.', 'price' => 0,
+            'currency' => 'INR', 'duration_years' => 0, 'duration_days' => 15, 'coverage_sqm' => 5,
+            'features' => ['15 days of protection', 'No payment required', 'Cancel automatically at trial end'],
+            'accent' => 'black', 'is_active' => true, 'sort_order' => 0,
+        ]);
+
         Plan::updateOrCreate(['slug' => 'silver'], [
             'name' => 'Silver Plan', 'description' => 'Essential protection for everyday driving.', 'price' => 54900,
             'currency' => 'INR', 'duration_years' => 2, 'coverage_sqm' => 5, 'features' => ['Accidental damage cover', 'Film + labour included', 'No excess or callout fee'],

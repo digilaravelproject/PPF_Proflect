@@ -27,6 +27,15 @@
             @error('email') <p class="field__error">{{ $message }}</p> @enderror
         </div>
 
+        <div class="field">
+            <label for="phone">Phone number</label>
+            <div class="field__control">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3l3 4-2 2c1.5 3 3.5 5 6.5 6.5l2-2 4 3c-1 3-3 4.5-5.5 4C9 19 5 15 3.5 9 3 6.5 4 4 7 3z"/></svg>
+                <input id="phone" name="phone" type="tel" value="{{ old('phone') }}" placeholder="Your phone number" required autocomplete="tel">
+            </div>
+            @error('phone') <p class="field__error">{{ $message }}</p> @enderror
+        </div>
+
         <div class="field-grid">
             <div class="field">
                 <label for="password">Password</label>

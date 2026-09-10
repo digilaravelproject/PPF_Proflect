@@ -13,6 +13,6 @@ class DashboardController extends Controller
 {
     public function __invoke(): View
     {
-        return view('admin.dashboard', ['customers' => User::count(), 'plans' => Plan::count(), 'subscriptions' => Subscription::where('status', 'active')->count(), 'revenue' => Payment::where('status', 'paid')->sum('amount')]);
+        return view('admin.dashboard', ['customers' => User::count(), 'plans' => Plan::count(), 'subscriptions' => Subscription::where('status', 'active')->where('ends_at', '>', now())->count(), 'revenue' => Payment::where('status', 'paid')->sum('amount')]);
     }
 }

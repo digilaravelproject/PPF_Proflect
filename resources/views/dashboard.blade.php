@@ -13,7 +13,7 @@
         <nav class="sidebar__nav" aria-label="Main navigation">
             <a class="active" href="{{ route('dashboard') }}"><span>⌂</span> Overview</a>
             <a href="#warranty"><span>◇</span> My warranty</a>
-            <a href="#claims"><span>▣</span> Claims</a>
+            <a href="{{ route('claims.index') }}"><span>▣</span> Claims</a>
             <a href="{{ route('profile.edit') }}"><span>♙</span> My profile</a>
             <a href="{{ route('subscription.index') }}"><span>◇</span> Protection plans</a>
             <a href="#documents"><span>⇩</span> Documents</a>
@@ -53,7 +53,7 @@
                     <h2>Welcome back, {{ explode(' ', trim(auth()->user()->name))[0] }}.</h2>
                     <p>Here’s everything you need to manage your vehicle protection.</p>
                 </div>
-                <a href="#claims" class="button button--dark">Make a claim <span>→</span></a>
+                <a href="{{ route('claims.create') }}" class="button button--dark">Make a claim <span>→</span></a>
             </section>
 
             @if ($subscription)
@@ -73,8 +73,8 @@
                         <h3>Your registered vehicle</h3>
                         <p class="reg-number">PROFILE DETAILS AVAILABLE</p>
                         <div class="plan-row">
-                            <span class="plan-badge">G</span>
-                            <span><b>{{ $subscription->plan->name }}</b><small>{{ $subscription->plan->duration_years }} years · {{ rtrim(rtrim($subscription->plan->coverage_sqm, '0'), '.') }} square metres</small></span>
+                            <span class="plan-badge">{{ strtoupper(substr($subscription->plan->name, 0, 1)) }}</span>
+                            <span><b>{{ $subscription->plan->name }}</b><small>{{ $subscription->plan->duration_label }} · {{ rtrim(rtrim($subscription->plan->coverage_sqm, '0'), '.') }} square metres</small></span>
                         </div>
                     </div>
                     <div class="coverage-ring" style="--progress: 0deg">
@@ -96,8 +96,8 @@
                 <article class="panel" id="claims">
                     <div class="panel__header"><div><span class="eyebrow">QUICK ACTIONS</span><h3>What would you like to do?</h3></div></div>
                     <div class="action-list">
-                        <a href="#"><span class="action-list__icon action-list__icon--green">＋</span><span><b>Make a claim</b><small>Report damage to your protected panels</small></span><i>→</i></a>
-                        <a href="#"><span class="action-list__icon">▤</span><span><b>View claim history</b><small>Track current and previous claims</small></span><i>→</i></a>
+                        <a href="{{ route('claims.create') }}"><span class="action-list__icon action-list__icon--green">＋</span><span><b>Make a claim</b><small>Report damage to your protected panels</small></span><i>→</i></a>
+                        <a href="{{ route('claims.index') }}"><span class="action-list__icon">▤</span><span><b>View claim history</b><small>Track current and previous claims</small></span><i>→</i></a>
                         <a href="#"><span class="action-list__icon">⇄</span><span><b>Transfer ownership</b><small>Move coverage to a new owner</small></span><i>→</i></a>
                         <a href="#vehicle"><span class="action-list__icon">◇</span><span><b>Vehicle details</b><small>Review your registered vehicle</small></span><i>→</i></a>
                     </div>
@@ -110,7 +110,7 @@
                     <div class="coverage-labels"><span><b>0 m²</b> used</span><span><b>{{ $subscription ? rtrim(rtrim($subscription->plan->coverage_sqm, '0'), '.') : 0 }} m²</b> available</span></div>
                     <hr>
                     <div class="detail-row"><span>Plan type</span><b>{{ $subscription?->plan->name ?? 'No active plan' }}</b></div>
-                    <div class="detail-row"><span>Term</span><b>{{ $subscription ? $subscription->plan->duration_years.' years' : '—' }}</b></div>
+                    <div class="detail-row"><span>Term</span><b>{{ $subscription ? $subscription->plan->duration_label : '—' }}</b></div>
                     <div class="detail-row"><span>Covered panels</span><b>{{ $subscription ? 'Full vehicle' : '—' }}</b></div>
                     <div class="protected-note"><span>{{ $subscription ? '✓' : '!' }}</span><p><b>{{ $subscription ? 'You’re fully protected' : 'Protection not active' }}</b><br>{{ $subscription ? 'Your program is active and ready when you need it.' : 'Choose a plan to activate replacement protection.' }}</p></div>
                 </article>
