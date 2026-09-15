@@ -27,7 +27,7 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->text('description')->nullable();
             $table->unsignedInteger('price');
-            $table->string('currency', 3)->default('INR');
+            $table->string('currency', 3)->default('USD');
             $table->unsignedSmallInteger('duration_years')->default(1);
             $table->decimal('coverage_sqm', 6, 2)->default(0);
             $table->json('features')->nullable();
@@ -44,7 +44,7 @@ return new class extends Migration
             $table->string('gateway_order_id')->unique();
             $table->string('gateway_payment_id')->nullable()->unique();
             $table->unsignedInteger('amount');
-            $table->string('currency', 3)->default('INR');
+            $table->string('currency', 3)->default('USD');
             $table->string('status')->default('created')->index();
             $table->timestamp('paid_at')->nullable();
             $table->json('metadata')->nullable();

@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\AdminAuthenticated;
 use App\Http\Middleware\EnsureOnboardingCompleted;
+use App\Http\Middleware\EnsureSubscriptionActive;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -16,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin.auth' => AdminAuthenticated::class,
             'onboarded' => EnsureOnboardingCompleted::class,
+            'subscription.active' => EnsureSubscriptionActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

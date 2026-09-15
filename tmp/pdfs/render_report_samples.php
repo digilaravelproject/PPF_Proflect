@@ -6,11 +6,12 @@ use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Collection;
 
 require dirname(__DIR__, 2).'/vendor/autoload.php';
 $app = require_once dirname(__DIR__, 2).'/bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app->make(Kernel::class)->bootstrap();
 
 $user = new User(['name' => 'Rahul Kulkarni', 'email' => 'rahul@example.com', 'phone' => '9876543210']);
 $user->id = 101;
@@ -43,12 +44,12 @@ if ($kind === 'claims') {
 }
 
 if ($kind === 'payments') {
-    $paid = new Payment(['gateway' => 'razorpay', 'gateway_order_id' => 'order_R4Z0R001', 'gateway_payment_id' => 'pay_R4Z0R001', 'amount' => 89900, 'currency' => 'INR', 'status' => 'paid', 'paid_at' => now()->subDays(3)]);
+    $paid = new Payment(['gateway' => 'razorpay', 'gateway_order_id' => 'order_R4Z0R001', 'gateway_payment_id' => 'pay_R4Z0R001', 'amount' => 89900, 'currency' => 'USD', 'status' => 'paid', 'paid_at' => now()->subDays(3)]);
     $paid->id = 42;
     $paid->created_at = now()->subDays(3);
     $paid->setRelation('user', $user);
     $paid->setRelation('plan', $paidPlan);
-    $free = new Payment(['gateway' => 'free', 'gateway_order_id' => 'free_subscription_43', 'amount' => 0, 'currency' => 'INR', 'status' => 'paid', 'paid_at' => now()->subDay()]);
+    $free = new Payment(['gateway' => 'free', 'gateway_order_id' => 'free_subscription_43', 'amount' => 0, 'currency' => 'USD', 'status' => 'paid', 'paid_at' => now()->subDay()]);
     $free->id = 43;
     $free->created_at = now()->subDay();
     $free->setRelation('user', $user);

@@ -75,7 +75,7 @@ class ClaimWorkflowTest extends TestCase
         ]);
         Payment::create([
             'user_id' => $user->id, 'plan_id' => $plan->id, 'gateway_order_id' => 'order_report_1',
-            'gateway_payment_id' => 'pay_report_1', 'amount' => 54900, 'currency' => 'INR', 'status' => 'paid', 'paid_at' => now(),
+            'gateway_payment_id' => 'pay_report_1', 'amount' => 54900, 'currency' => 'USD', 'status' => 'paid', 'paid_at' => now(),
         ]);
         $admin = Admin::create(['name' => 'Admin', 'email' => 'claims-admin@example.com', 'password' => 'password123']);
 
@@ -92,10 +92,40 @@ class ClaimWorkflowTest extends TestCase
             ->assertOk()->assertHeader('content-type', 'application/pdf');
         $this->actingAs($admin, 'admin')->get(route('admin.payments.index', ['search' => 'pay_report_1']))
             ->assertOk()->assertSee('pay_report_1');
+        $this->actingAs($admin, 'admin')->get(route('admin.claims.show', $claim))
+            ->assertOk()->assertSee('CUSTOMER SELECTED PANELS')->assertSee('Right Door');
+        $this->actingAs($admin, 'admin')->get(route('admin.reports.index'))
+            ->assertOk()->assertSee('Export to Excel')->assertSee('Export to PDF');
+        $this->actingAs($admin, 'admin')->get(route('admin.dashboard'))
+            ->assertOk()->assertSee('Claims over six months')->assertSee('Recent claim requests');
+        $this->actingAs($admin, 'admin')->get(route('admin.reports.export', ['type' => 'all', 'format' => 'excel']))
+            ->assertOk()->assertHeader('content-type', 'application/vnd.ms-excel; charset=UTF-8');
+        $this->actingAs($admin, 'admin')->get(route('admin.reports.export', ['type' => 'claims', 'format' => 'pdf']))
+            ->assertOk()->assertHeader('content-type', 'application/pdf');
 
         $this->actingAs($admin, 'admin')->delete(route('admin.claims.destroy', $claim))->assertRedirect(route('admin.claims.index'));
         Storage::disk('public')->assertMissing('claims/evidence.jpg');
         $this->assertDatabaseMissing('claims', ['id' => $claim->id]);
+    }
+
+    public function test_customer_documents_render_and_invalid_future_vehicle_year_has_a_clear_error(): void
+    {
+        Storage::fake('public');
+        [$user, $subscription] = $this->customerWithSubscription();
+
+        $this->actingAs($user)->get(route('documents.index'))
+            ->assertOk()->assertSee('Your documents')->assertSee('WARRANTY CERTIFICATE');
+        $this->actingAs($user)->get(route('documents.certificate', $subscription))
+            ->assertOk()->assertHeader('content-type', 'application/pdf');
+
+        $this->actingAs($user)->from(route('claims.create'))->post(route('claims.store'), [
+            'vehicle_make' => 'Tata',
+            'vehicle_model' => 'Indigo XZ',
+            'registration_number' => 'MH24AH0850',
+            'vehicle_year' => now()->year + 2,
+            'panels' => ['right_fender'],
+            'photos' => [UploadedFile::fake()->image('damage.jpg')],
+        ])->assertRedirect(route('claims.create'))->assertSessionHasErrors('vehicle_year');
     }
 
     private function customerWithSubscription(): array

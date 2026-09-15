@@ -1,4 +1,22 @@
 @props(['title' => 'My Warranty'])
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="csrf-token" content="{{ csrf_token() }}"><title>{{ $title }} · Proflect</title>@vite(['resources/css/app.css','resources/js/app.js'])</head><body class="dashboard-body">
-<aside class="sidebar" id="sidebar"><div class="sidebar__brand"><x-brand light/></div><nav class="sidebar__nav" aria-label="Main navigation"><a class="{{ request()->routeIs('dashboard')?'active':'' }}" href="{{ route('dashboard') }}"><span>⌂</span>Overview</a><a href="{{ route('dashboard') }}#warranty"><span>◇</span>My warranty</a><a class="{{ request()->routeIs('claims.*')?'active':'' }}" href="{{ route('claims.index') }}"><span>▣</span>Claims</a><a class="{{ request()->routeIs('profile.*')?'active':'' }}" href="{{ route('profile.edit') }}"><span>♙</span>My profile</a><a class="{{ request()->routeIs('subscription.*')?'active':'' }}" href="{{ route('subscription.index') }}"><span>◇</span>Protection plans</a></nav><div class="sidebar__help"><span class="sidebar__help-icon">?</span><b>Need some help?</b><p>Our protection team is here for you.</p><a href="mailto:support@proflect.com">Contact support</a></div><form method="POST" action="{{ route('logout') }}">@csrf<button class="sidebar__logout"><span>↪</span>Sign out</button></form></aside>
-<main class="dashboard-main"><header class="topbar"><button class="menu-button" type="button" data-sidebar-toggle aria-controls="sidebar" aria-expanded="false">☰</button><div><p class="topbar__kicker">CUSTOMER PORTAL</p><h1>{{ $title }}</h1></div><div class="profile-menu"><span class="profile-menu__avatar">{{ strtoupper(substr(auth()->user()->name,0,1)) }}</span><span><b>{{ auth()->user()->name }}</b><small>{{ auth()->user()->email }}</small></span></div></header><div class="dashboard-content">@if(session('status'))<div class="alert alert--success">{{ session('status') }}</div>@endif @if($errors->any())<div class="alert admin-error">{{ $errors->first() }}</div>@endif {{ $slot }}</div></main><div class="sidebar-scrim" data-sidebar-toggle></div></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="csrf-token" content="{{ csrf_token() }}"><title>{{ $title }} · Proflect</title>@vite(['resources/css/app.css','resources/js/app.js'])</head>
+<body class="dashboard-body customer-nav-body">
+<header class="customer-navbar">
+    <a href="{{ route('dashboard') }}" class="customer-navbar__brand"><x-brand light/></a>
+    <button class="customer-nav-toggle" type="button" data-customer-nav-toggle aria-controls="customer-navigation" aria-expanded="false" aria-label="Open navigation">☰</button>
+    <nav id="customer-navigation" class="customer-navbar__nav" aria-label="Customer navigation">
+        <a class="{{ request()->routeIs('dashboard')?'active':'' }}" href="{{ route('dashboard') }}">Overview</a>
+        <a href="{{ route('dashboard') }}#warranty">My warranty</a>
+        <a class="{{ request()->routeIs('claims.*')?'active':'' }}" href="{{ route('claims.index') }}">Claims</a>
+        <a class="{{ request()->routeIs('subscription.*')?'active':'' }}" href="{{ route('subscription.index') }}">Protection plans</a>
+        <a class="{{ request()->routeIs('documents.*')?'active':'' }}" href="{{ route('documents.index') }}">Documents</a>
+    </nav>
+    <div class="navbar-profile" data-profile-menu>
+        <button type="button" data-profile-toggle aria-expanded="false"><span class="profile-menu__avatar">{{ strtoupper(substr(auth()->user()->name,0,1)) }}</span><span><b>{{ auth()->user()->name }}</b><small>{{ auth()->user()->email }}</small></span><i>⌄</i></button>
+        <div class="profile-dropdown"><a href="{{ route('profile.edit') }}">My profile</a><form method="POST" action="{{ route('logout') }}">@csrf<button>Sign out</button></form></div>
+    </div>
+</header>
+<main class="customer-main"><header class="customer-page-head"><div><p class="topbar__kicker">CUSTOMER PORTAL</p><h1>{{ $title }}</h1></div></header><div class="dashboard-content">@if(session('status'))<div class="alert alert--success">{{ session('status') }}</div>@endif @if($errors->any())<div class="alert admin-error" role="alert">{{ $errors->first() }}</div>@endif {{ $slot }}</div></main>
+</body></html>

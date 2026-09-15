@@ -20,7 +20,7 @@ return new class extends Migration
                     'gateway' => 'free',
                     'gateway_order_id' => 'free_subscription_'.$subscription->id,
                     'amount' => 0,
-                    'currency' => 'INR',
+                    'currency' => 'USD',
                     'status' => 'paid',
                     'paid_at' => $subscription->starts_at,
                     'metadata' => json_encode(['method' => 'free_plan']),

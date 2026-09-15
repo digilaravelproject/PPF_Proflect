@@ -25,7 +25,7 @@ return new class extends Migration
                 'name' => 'Free Plan',
                 'description' => 'Try Proflect protection free for 15 days.',
                 'price' => 0,
-                'currency' => 'INR',
+                'currency' => 'USD',
                 'duration_years' => 0,
                 'duration_days' => 15,
                 'coverage_sqm' => 5,

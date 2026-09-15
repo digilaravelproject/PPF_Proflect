@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Plan;
 use App\Models\Payment;
+use App\Models\Plan;
 use App\Models\Subscription;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,9 +12,21 @@ use Illuminate\View\View;
 
 class SubscriptionController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        return view('subscription.index', ['plans' => Plan::query()->where('is_active', true)->orderBy('sort_order')->get()]);
+        $expiredSubscription = $request->user()->subscriptions()
+            ->with('plan')
+            ->where('ends_at', '<=', now())
+            ->latest('ends_at')
+            ->first();
+
+        return view('subscription.index', [
+            'plans' => Plan::query()->where('is_active', true)->orderBy('sort_order')->get(),
+            'expiredSubscription' => $expiredSubscription,
+            'usedFreePlanIds' => $request->user()->subscriptions()
+                ->whereHas('plan', fn ($query) => $query->where('price', 0))
+                ->pluck('plan_id'),
+        ]);
     }
 
     public function checkout(Plan $plan): View

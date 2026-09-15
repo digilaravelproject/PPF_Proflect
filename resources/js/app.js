@@ -18,6 +18,28 @@ document.querySelectorAll('[data-sidebar-toggle]').forEach((button) => {
     });
 });
 
+document.querySelectorAll('[data-customer-nav-toggle]').forEach((button) => {
+    button.addEventListener('click', () => {
+        const open = document.body.classList.toggle('customer-nav-open');
+        button.setAttribute('aria-expanded', String(open));
+    });
+});
+
+document.querySelectorAll('[data-profile-menu]').forEach((menu) => {
+    const toggle = menu.querySelector('[data-profile-toggle]');
+    toggle?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const open = menu.classList.toggle('open');
+        toggle.setAttribute('aria-expanded', String(open));
+    });
+    document.addEventListener('click', (event) => {
+        if (!menu.contains(event.target)) {
+            menu.classList.remove('open');
+            toggle?.setAttribute('aria-expanded', 'false');
+        }
+    });
+});
+
 if (document.querySelector('.sidebar') && !document.querySelector('.menu-button')) {
     const menuButton = document.createElement('button');
     menuButton.type = 'button';
@@ -99,6 +121,57 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
     const vehicleMake = wizard.querySelector('[name="vehicle_make"]');
     const vehicleModel = wizard.querySelector('[name="vehicle_model"]');
     const registration = wizard.querySelector('[name="registration_number"]');
+    const vehicleYear = wizard.querySelector('[name="vehicle_year"]');
+    const maximumVehicleYear = Number(form.dataset.maximumVehicleYear);
+    const errorBox = document.createElement('div');
+    errorBox.className = 'alert admin-error wizard-error';
+    errorBox.setAttribute('role', 'alert');
+    errorBox.hidden = true;
+    form.prepend(errorBox);
+
+    const showWizardError = (message, input = null) => {
+        errorBox.textContent = message;
+        errorBox.hidden = false;
+        input?.focus();
+        errorBox.scrollIntoView({behavior: 'smooth', block: 'center'});
+    };
+
+    const clearWizardError = () => {
+        errorBox.hidden = true;
+        errorBox.textContent = '';
+    };
+
+    const validateVehicle = () => {
+        const labels = {vehicle_make: 'vehicle make', vehicle_model: 'vehicle model', registration_number: 'registration number'};
+        const missing = [vehicleMake, vehicleModel, registration].find((input) => !input.value.trim());
+        if (missing) {
+            showWizardError(`Please enter the ${labels[missing.name]}.`, missing);
+            return false;
+        }
+        if (vehicleYear.value) {
+            const year = Number(vehicleYear.value);
+            if (!Number.isInteger(year) || year < 1950 || year > maximumVehicleYear) {
+                showWizardError(`Enter a model year between 1950 and ${maximumVehicleYear}.`, vehicleYear);
+                return false;
+            }
+        }
+        if (!panelInputs.some((input) => input.checked)) {
+            showWizardError('Select at least one damaged panel.');
+            return false;
+        }
+        clearWizardError();
+        return true;
+    };
+
+    const validatePhotos = () => {
+        const count = photoInput.files?.length || 0;
+        if (count < 1 || count > 6) {
+            showWizardError('Choose between 1 and 6 damage photos.', photoInput);
+            return false;
+        }
+        clearWizardError();
+        return true;
+    };
 
     const showStep = (nextStep) => {
         step = nextStep;
@@ -181,22 +254,10 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
 
     wizard.querySelectorAll('[data-next]').forEach((button) => button.addEventListener('click', () => {
         if (step === 1) {
-            const invalidVehicleField = [...wizard.querySelectorAll('.vehicle-fields input[required]')].find((input) => !input.checkValidity());
-            if (invalidVehicleField) {
-                invalidVehicleField.reportValidity();
-                return;
-            }
-            if (!panelInputs.some((input) => input.checked)) {
-                alert('Select at least one damaged panel.');
-                return;
-            }
+            if (!validateVehicle()) return;
         }
         if (step === 2) {
-            const count = photoInput.files?.length || 0;
-            if (count < 1 || count > 6) {
-                alert('Choose between 1 and 6 damage photos.');
-                return;
-            }
+            if (!validatePhotos()) return;
             review();
         }
         showStep(Math.min(3, step + 1));
@@ -206,6 +267,18 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
         const target = Number(button.dataset.stepTarget);
         if (target < step) showStep(target);
     }));
-    form?.addEventListener('submit', () => form.querySelector('button[type="submit"]')?.setAttribute('disabled', 'disabled'));
+    form?.addEventListener('submit', (event) => {
+        if (!validateVehicle()) {
+            event.preventDefault();
+            showStep(1);
+            return;
+        }
+        if (!validatePhotos()) {
+            event.preventDefault();
+            showStep(2);
+            return;
+        }
+        form.querySelector('button[type="submit"]')?.setAttribute('disabled', 'disabled');
+    });
     syncPanels();
 });

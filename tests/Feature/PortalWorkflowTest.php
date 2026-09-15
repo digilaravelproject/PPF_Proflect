@@ -39,8 +39,8 @@ class PortalWorkflowTest extends TestCase
         $admin = Admin::create(['name' => 'Admin', 'email' => 'admin@ppf.com', 'password' => 'admin123']);
         $this->post(route('admin.login.store'), ['email' => 'admin@ppf.com', 'password' => 'admin123'])->assertRedirect(route('admin.dashboard'));
         $this->assertAuthenticatedAs($admin, 'admin');
-        $this->post(route('admin.plans.store'), ['name' => 'Platinum Plan', 'price_rupees' => 1299, 'duration_years' => 5, 'coverage_sqm' => 8, 'features_text' => "Damage cover\nLabour included", 'accent' => 'black', 'is_active' => 1, 'sort_order' => 3])->assertRedirect(route('admin.plans.index'));
-        $this->assertDatabaseHas('plans', ['slug' => 'platinum-plan', 'price' => 129900]);
+        $this->post(route('admin.plans.store'), ['name' => 'Platinum Plan', 'price_dollars' => 1299, 'duration_years' => 5, 'coverage_sqm' => 8, 'features_text' => "Damage cover\nLabour included", 'accent' => 'black', 'is_active' => 1, 'sort_order' => 3])->assertRedirect(route('admin.plans.index'));
+        $this->assertDatabaseHas('plans', ['slug' => 'platinum-plan', 'price' => 129900, 'currency' => 'USD']);
         $this->put(route('admin.profile.update'), ['name' => 'Primary Admin', 'email' => 'admin@ppf.com'])->assertSessionHas('status');
         $this->assertDatabaseHas('admins', ['id' => $admin->id, 'name' => 'Primary Admin']);
     }
@@ -50,7 +50,7 @@ class PortalWorkflowTest extends TestCase
         Mail::fake();
         $user = User::factory()->create();
         $plan = Plan::create(['name' => 'Gold', 'slug' => 'gold', 'price' => 89900, 'duration_years' => 5, 'coverage_sqm' => 5, 'is_active' => true]);
-        $payment = Payment::create(['user_id' => $user->id, 'plan_id' => $plan->id, 'gateway_order_id' => 'order_test', 'amount' => 89900, 'currency' => 'INR']);
+        $payment = Payment::create(['user_id' => $user->id, 'plan_id' => $plan->id, 'gateway_order_id' => 'order_test', 'amount' => 89900, 'currency' => 'USD']);
         $this->mock(RazorpayService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('verifyPayment')->once()->andReturn(['method' => 'upi']);
         });
@@ -94,7 +94,16 @@ class PortalWorkflowTest extends TestCase
 
         $user = $user->fresh();
         $this->travel(16)->days();
-        $this->actingAs($user)->get(route('dashboard'))->assertOk()->assertSee('No active plan yet');
+        $this->actingAs($user)->get(route('dashboard'))->assertRedirect(route('subscription.index'));
+        $this->actingAs($user)->get(route('profile.edit'))->assertRedirect(route('subscription.index'));
+        $this->actingAs($user)->get(route('claims.index'))->assertRedirect(route('subscription.index'));
+        $this->actingAs($user)->get(route('documents.index'))->assertRedirect(route('subscription.index'));
+        $this->actingAs($user)->get(route('subscription.index'))
+            ->assertOk()
+            ->assertSee('subscription ended on')
+            ->assertSee('Renew your protection to continue.')
+            ->assertSee('Free trial already used')
+            ->assertSee('Sign out');
         $this->travelBack();
     }
 
