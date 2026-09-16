@@ -65,4 +65,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Claim::class);
     }
+
+    public function usedWarrantyCodes(): HasMany
+    {
+        return $this->hasMany(WarrantyCode::class, 'used_by_user_id');
+    }
 }

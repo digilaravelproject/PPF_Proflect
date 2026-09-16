@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Claim;
+use App\Services\CustomerNotificationService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -23,16 +24,18 @@ class ClaimController extends Controller
 
     public function show(Claim $claim): View
     {
-        return view('admin.claims.show', ['claim' => $claim->load(['user', 'subscription.plan']), 'panels' => Claim::PANELS]);
+        return view('admin.claims.show', ['claim' => $claim->load(['user', 'subscription.plan', 'warrantyCode']), 'panels' => Claim::PANELS]);
     }
 
-    public function update(Request $request, Claim $claim): RedirectResponse
+    public function update(Request $request, Claim $claim, CustomerNotificationService $notifications): RedirectResponse
     {
         $validated = $request->validate([
             'status' => ['required', Rule::in(['approved', 'disapproved'])],
-            'admin_notes' => ['nullable', 'string', 'max:2000'],
+            'admin_notes' => ['nullable', 'required_if:status,disapproved', 'string', 'max:2000'],
+            'booking_date' => ['nullable', 'required_if:status,approved', 'date', 'after_or_equal:today'],
         ]);
-        $claim->update($validated + ['reviewed_at' => now()]);
+        $claim->update(array_merge($validated, ['booking_date' => $validated['status'] === 'approved' ? $validated['booking_date'] : null, 'reviewed_at' => now()]));
+        $notifications->claimDecision($claim->fresh('user'));
 
         return back()->with('status', 'Claim marked as '.$validated['status'].'.');
     }
@@ -69,10 +72,11 @@ class ClaimController extends Controller
             'to' => ['nullable', 'date', 'after_or_equal:from'],
         ]);
 
-        return Claim::query()->with(['user', 'subscription.plan'])
+        return Claim::query()->with(['user', 'subscription.plan', 'warrantyCode'])
             ->when($request->filled('search'), function (Builder $query) use ($request): void {
                 $search = trim($request->string('search')->toString());
                 $query->where(fn (Builder $query) => $query->where('claim_number', 'like', "%{$search}%")
+                    ->orWhereHas('warrantyCode', fn (Builder $query) => $query->where('code', 'like', "%{$search}%"))
                     ->orWhereHas('user', fn (Builder $query) => $query->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")));
             })
             ->when($request->filled('status'), fn (Builder $query) => $query->where('status', $request->string('status')))

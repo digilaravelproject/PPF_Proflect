@@ -61,8 +61,8 @@ class ReportController extends Controller
             $sections[] = ['title' => 'Subscriptions', 'headers' => ['Warranty', 'Customer', 'Plan', 'Start', 'End', 'Status'], 'rows' => $rows];
         }
         if ($include('claims')) {
-            $rows = $this->dated(Claim::query()->with(['user', 'subscription.plan']), $from, $to)->get()->map(fn (Claim $claim) => [$claim->claim_number, $claim->user->name, trim($claim->vehicle_make.' '.$claim->vehicle_model), $claim->registration_number, $claim->subscription->plan->name, count($claim->panels), ucfirst($claim->status), $claim->created_at->format('Y-m-d')]);
-            $sections[] = ['title' => 'Claims', 'headers' => ['Claim', 'Customer', 'Vehicle', 'Registration', 'Plan', 'Panels', 'Status', 'Submitted'], 'rows' => $rows];
+            $rows = $this->dated(Claim::query()->with(['user', 'subscription.plan', 'warrantyCode']), $from, $to)->get()->map(fn (Claim $claim) => [$claim->claim_number, $claim->warrantyCode?->code ?: '—', $claim->user->name, trim($claim->vehicle_make.' '.$claim->vehicle_model), $claim->registration_number, $claim->subscription->plan->name, count($claim->panels), ucfirst($claim->status), $claim->created_at->format('Y-m-d')]);
+            $sections[] = ['title' => 'Claims', 'headers' => ['Claim', 'Warranty Code', 'Customer', 'Vehicle', 'Registration', 'Plan', 'Panels', 'Status', 'Submitted'], 'rows' => $rows];
         }
         if ($include('payments')) {
             $rows = $this->dated(Payment::query()->with(['user', 'plan']), $from, $to)->get()->map(fn (Payment $payment) => [$payment->gateway_payment_id ?: $payment->gateway_order_id, $payment->user->name, $payment->plan->name, $payment->amount ? '$'.number_format($payment->amount / 100, 2) : 'Free', $payment->currency, ucfirst($payment->gateway), ucfirst(str_replace('_', ' ', $payment->status)), ($payment->paid_at ?? $payment->created_at)->format('Y-m-d')]);

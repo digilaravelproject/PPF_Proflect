@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Mail\WelcomeCustomerMail;
 use App\Models\User;
+use App\Services\CustomerNotificationService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,7 +22,7 @@ class RegisteredUserController extends Controller
         return view('auth.register');
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, CustomerNotificationService $notifications): RedirectResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -39,6 +40,7 @@ class RegisteredUserController extends Controller
         } catch (Throwable $exception) {
             report($exception);
         }
+        $notifications->registration($user);
         Auth::login($user);
         $request->session()->regenerate();
 

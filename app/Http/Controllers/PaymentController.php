@@ -6,6 +6,7 @@ use App\Mail\PaymentSuccessfulMail;
 use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\Subscription;
+use App\Services\CustomerNotificationService;
 use App\Services\RazorpayService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -34,7 +35,7 @@ class PaymentController extends Controller
         }
     }
 
-    public function verify(Request $request, RazorpayService $razorpay): JsonResponse
+    public function verify(Request $request, RazorpayService $razorpay, CustomerNotificationService $notifications): JsonResponse
     {
         $attributes = $request->validate([
             'razorpay_payment_id' => ['required', 'string'], 'razorpay_order_id' => ['required', 'string'], 'razorpay_signature' => ['required', 'string'],
@@ -61,10 +62,14 @@ class PaymentController extends Controller
             return response()->json(['message' => 'Payment verification failed. No subscription was activated.'], 422);
         }
 
-        try {
-            Mail::to($request->user())->send(new PaymentSuccessfulMail($payment->fresh(['plan', 'user'])));
-        } catch (Throwable $exception) {
-            report($exception);
+        $paidPayment = $payment->fresh(['plan', 'user']);
+        $subscription = Subscription::query()->where('payment_id', $payment->id)->firstOrFail();
+        if ($notifications->paymentSuccessful($paidPayment, $subscription)) {
+            try {
+                Mail::to($request->user())->send(new PaymentSuccessfulMail($paidPayment));
+            } catch (Throwable $exception) {
+                report($exception);
+            }
         }
 
         return response()->json(['redirect' => route('subscription.success')]);

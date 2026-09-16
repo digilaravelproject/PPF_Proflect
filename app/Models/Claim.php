@@ -10,6 +10,7 @@ class Claim extends Model
     public const PANELS = [
         'front_bumper' => 'Front Bumper',
         'bonnet' => 'Bonnet',
+        'roof' => 'Roof',
         'left_fender' => 'Left Fender',
         'right_fender' => 'Right Fender',
         'left_door' => 'Left Door',
@@ -18,11 +19,11 @@ class Claim extends Model
         'other' => 'Other',
     ];
 
-    protected $fillable = ['claim_number', 'user_id', 'subscription_id', 'vehicle_make', 'vehicle_model', 'registration_number', 'vehicle_year', 'panels', 'photos', 'description', 'status', 'admin_notes', 'reviewed_at'];
+    protected $fillable = ['claim_number', 'user_id', 'subscription_id', 'warranty_code_id', 'vehicle_make', 'vehicle_model', 'registration_number', 'vehicle_year', 'panels', 'photos', 'description', 'status', 'admin_notes', 'reviewed_at', 'booking_date'];
 
     protected function casts(): array
     {
-        return ['panels' => 'array', 'photos' => 'array', 'reviewed_at' => 'datetime'];
+        return ['panels' => 'array', 'photos' => 'array', 'reviewed_at' => 'datetime', 'booking_date' => 'date'];
     }
 
     public function user(): BelongsTo
@@ -33,5 +34,10 @@ class Claim extends Model
     public function subscription(): BelongsTo
     {
         return $this->belongsTo(Subscription::class);
+    }
+
+    public function warrantyCode(): BelongsTo
+    {
+        return $this->belongsTo(WarrantyCode::class)->withTrashed();
     }
 }

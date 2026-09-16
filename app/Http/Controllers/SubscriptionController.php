@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\PaymentSuccessfulMail;
 use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\Subscription;
+use App\Services\CustomerNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\View\View;
+use Throwable;
 
 class SubscriptionController extends Controller
 {
@@ -36,11 +40,11 @@ class SubscriptionController extends Controller
         return view('subscription.checkout', compact('plan'));
     }
 
-    public function activateFree(Request $request, Plan $plan): RedirectResponse
+    public function activateFree(Request $request, Plan $plan, CustomerNotificationService $notifications): RedirectResponse
     {
         abort_unless($plan->is_active && $plan->is_free && $plan->duration_days, 404);
 
-        DB::transaction(function () use ($request, $plan): void {
+        $subscription = DB::transaction(function () use ($request, $plan): Subscription {
             $user = $request->user()->newQuery()->whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
             $alreadyClaimed = Subscription::query()
                 ->where('user_id', $user->id)
@@ -59,7 +63,7 @@ class SubscriptionController extends Controller
                     'paid_at' => now(),
                     'metadata' => ['method' => 'free_plan'],
                 ]);
-                Subscription::create([
+                $subscription = Subscription::create([
                     'user_id' => $user->id,
                     'plan_id' => $plan->id,
                     'payment_id' => $payment->id,
@@ -67,10 +71,23 @@ class SubscriptionController extends Controller
                     'starts_at' => now(),
                     'ends_at' => $plan->subscriptionEndsAt(),
                 ]);
+            } else {
+                $subscription = Subscription::query()->where('user_id', $user->id)->where('plan_id', $plan->id)->firstOrFail();
             }
 
             $user->update(['onboarding_completed_at' => now()]);
+
+            return $subscription;
         });
+
+        $payment = $subscription->payment()->with(['plan', 'user'])->firstOrFail();
+        if ($notifications->paymentSuccessful($payment, $subscription)) {
+            try {
+                Mail::to($request->user())->send(new PaymentSuccessfulMail($payment));
+            } catch (Throwable $exception) {
+                report($exception);
+            }
+        }
 
         return redirect()->route('subscription.success');
     }

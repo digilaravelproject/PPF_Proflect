@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Models\WarrantyCode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -21,6 +22,7 @@ class ClaimWorkflowTest extends TestCase
     {
         Storage::fake('public');
         [$user, $subscription] = $this->customerWithSubscription();
+        $warrantyCode = WarrantyCode::query()->where('is_active', true)->whereNull('used_at')->firstOrFail();
 
         $this->actingAs($user)->get(route('claims.create'))
             ->assertOk()
@@ -29,6 +31,7 @@ class ClaimWorkflowTest extends TestCase
             ->assertSee('Review');
 
         $response = $this->actingAs($user)->post(route('claims.store'), [
+            'warranty_code' => $warrantyCode->code,
             'vehicle_make' => 'Toyota',
             'vehicle_model' => 'Fortuner',
             'registration_number' => 'MH12AB1234',
@@ -82,7 +85,7 @@ class ClaimWorkflowTest extends TestCase
         $this->actingAs($admin, 'admin')->get(route('admin.claims.index', ['search' => 'CLM-REPORT', 'status' => 'pending']))
             ->assertOk()->assertSee('CLM-REPORT-001')->assertSee('MH12AB1234');
         $this->actingAs($admin, 'admin')->put(route('admin.claims.update', $claim), [
-            'status' => 'approved', 'admin_notes' => 'Damage is covered.',
+            'status' => 'approved', 'admin_notes' => 'Damage is covered.', 'booking_date' => now()->addWeek()->toDateString(),
         ])->assertSessionHas('status');
         $this->assertDatabaseHas('claims', ['id' => $claim->id, 'status' => 'approved', 'admin_notes' => 'Damage is covered.']);
 
@@ -119,6 +122,7 @@ class ClaimWorkflowTest extends TestCase
             ->assertOk()->assertHeader('content-type', 'application/pdf');
 
         $this->actingAs($user)->from(route('claims.create'))->post(route('claims.store'), [
+            'warranty_code' => WarrantyCode::query()->where('is_active', true)->whereNull('used_at')->value('code'),
             'vehicle_make' => 'Tata',
             'vehicle_model' => 'Indigo XZ',
             'registration_number' => 'MH24AH0850',

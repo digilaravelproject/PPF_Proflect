@@ -17,7 +17,7 @@ class WelcomeCustomerMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Welcome to Proflect — your journey starts here');
+        return new Envelope(subject: 'Warranty registered — your Proflect replacement offer is ready');
     }
 
     public function content(): Content
