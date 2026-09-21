@@ -1,5 +1,7 @@
 @props(['selected' => [], 'interactive' => false])
 <div {{ $attributes->class(['car-selector', 'car-selector--static' => ! $interactive]) }} aria-label="Vehicle panel diagram">
+    <div class="car-selector__stage">
+    <img src="{{ asset('images/claim-car-top-light.png') }}" alt="Top view of a premium sedan">
     <svg viewBox="0 0 300 600" role="img">
         <title>{{ $interactive ? 'Select damaged vehicle panels' : 'Selected damaged vehicle panels' }}</title>
         <g class="car-outline"><path d="M90 42 Q150 10 210 42 L238 100 248 180 244 430 220 548 Q150 585 80 548 L56 430 52 180 62 100Z"/><path d="M92 112 Q150 82 208 112 L222 192 78 192Z"/><path d="M78 205 L222 205 228 385 72 385Z"/><path d="M78 400 L222 400 208 500 Q150 530 92 500Z"/></g>
@@ -20,5 +22,6 @@
         </g>
         <g class="car-lines"><line x1="150" y1="205" x2="150" y2="385"/><line x1="72" y1="296" x2="228" y2="296"/></g>
     </svg>
+    </div>
     <small>{{ $interactive ? 'Selected panels turn orange' : 'Orange areas were selected by the customer' }}</small>
 </div>

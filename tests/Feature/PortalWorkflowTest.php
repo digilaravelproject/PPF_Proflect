@@ -17,6 +17,22 @@ class PortalWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_public_landing_page_is_available(): void
+    {
+        $this->get('/')->assertOk()->assertSee('Premium PPF')->assertSee('Get protected');
+    }
+
+    public function test_overview_and_warranty_are_separate_customer_pages(): void
+    {
+        $user = User::factory()->create(['onboarding_completed_at' => now()]);
+        $plan = Plan::query()->where('slug', 'free')->firstOrFail();
+        $this->actingAs($user)->post(route('subscription.free', $plan));
+
+        $this->actingAs($user)->get(route('dashboard'))->assertOk()->assertSee('GOOD TO SEE YOU')->assertDontSee('WARRANTY #PF-');
+        $this->actingAs($user)->get(route('warranty.show'))->assertOk()->assertSee('WARRANTY #PF-')->assertSee('Customer navigation')->assertDontSee('customer-sidebar');
+        $this->actingAs($user)->get(route('vehicles.index'))->assertOk()->assertSee('Your protected vehicles');
+    }
+
     public function test_new_customer_is_routed_to_plans_and_can_skip(): void
     {
         $user = User::factory()->create(['onboarding_completed_at' => null]);
@@ -39,6 +55,8 @@ class PortalWorkflowTest extends TestCase
         $admin = Admin::create(['name' => 'Admin', 'email' => 'admin@ppf.com', 'password' => 'admin123']);
         $this->post(route('admin.login.store'), ['email' => 'admin@ppf.com', 'password' => 'admin123'])->assertRedirect(route('admin.dashboard'));
         $this->assertAuthenticatedAs($admin, 'admin');
+        $this->get(route('admin.vehicles.index'))->assertOk()->assertSee('Customer vehicles')->assertSee('Warranty Codes')->assertSee('Subscription Plans');
+        $this->get(route('admin.warranty-codes.index'))->assertOk()->assertSee('Warranty codes');
         $this->post(route('admin.plans.store'), ['name' => 'Platinum Plan', 'price_dollars' => 1299, 'duration_years' => 5, 'coverage_sqm' => 8, 'features_text' => "Damage cover\nLabour included", 'accent' => 'black', 'is_active' => 1, 'sort_order' => 3])->assertRedirect(route('admin.plans.index'));
         $this->assertDatabaseHas('plans', ['slug' => 'platinum-plan', 'price' => 129900, 'currency' => 'USD']);
         $this->put(route('admin.profile.update'), ['name' => 'Primary Admin', 'email' => 'admin@ppf.com'])->assertSessionHas('status');

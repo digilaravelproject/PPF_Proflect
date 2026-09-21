@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\PaymentController as AdminPaymentController;
 use App\Http\Controllers\Admin\PlanController as AdminPlanController;
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
 use App\Http\Controllers\Admin\ReportController as AdminReportController;
+use App\Http\Controllers\Admin\VehicleController as AdminVehicleController;
 use App\Http\Controllers\Admin\WarrantyCodeController as AdminWarrantyCodeController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\NewPasswordController;
@@ -25,7 +26,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return auth()->check()
         ? redirect()->route('dashboard')
-        : redirect()->route('login');
+        : view('welcome');
 });
 
 Route::middleware('guest')->group(function () {
@@ -52,7 +53,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/subscription/success', [PaymentController::class, 'success'])->name('subscription.success');
 
     Route::middleware(['onboarded', 'subscription.active'])->group(function () {
-        Route::get('/dashboard', DashboardController::class)->name('dashboard');
+        Route::get('/dashboard', [DashboardController::class, 'overview'])->name('dashboard');
+        Route::get('/my-vehicles', [DashboardController::class, 'vehicles'])->name('vehicles.index');
+        Route::get('/my-warranty', [DashboardController::class, 'warranty'])->name('warranty.show');
         Route::get('/claims', [ClaimController::class, 'index'])->name('claims.index');
         Route::get('/claims/create', [ClaimController::class, 'create'])->name('claims.create');
         Route::post('/claims/warranty-code/check', [ClaimController::class, 'checkWarrantyCode'])->middleware('throttle:30,1')->name('claims.warranty-code.check');
@@ -77,6 +80,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/dashboard', AdminDashboardController::class)->name('dashboard');
         Route::resource('plans', AdminPlanController::class)->except('show');
         Route::resource('customers', AdminCustomerController::class)->except('show');
+        Route::get('/vehicles', [AdminVehicleController::class, 'index'])->name('vehicles.index');
         Route::get('/claims/report', [AdminClaimController::class, 'report'])->name('claims.report');
         Route::get('/claims/{claim}/photos/{index}', [AdminClaimController::class, 'photo'])->whereNumber('index')->name('claims.photo');
         Route::resource('claims', AdminClaimController::class)->only(['index', 'show', 'update', 'destroy']);

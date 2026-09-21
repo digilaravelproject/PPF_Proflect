@@ -1,5 +1,12 @@
 import './bootstrap';
 
+document.querySelectorAll('[data-landing-nav-toggle]').forEach((button) => {
+    button.addEventListener('click', () => {
+        const open = document.body.classList.toggle('landing-nav-open');
+        button.setAttribute('aria-expanded', String(open));
+    });
+});
+
 document.querySelectorAll('[data-password-toggle]').forEach((button) => {
     button.addEventListener('click', () => {
         const input = document.getElementById(button.dataset.passwordToggle);
