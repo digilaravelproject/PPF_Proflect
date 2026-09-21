@@ -1,7 +1,7 @@
 @props(['title' => 'My Warranty'])
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="csrf-token" content="{{ csrf_token() }}"><title>{{ $title }} · Proflect</title>@vite(['resources/css/app.css','resources/js/app.js'])</head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="csrf-token" content="{{ csrf_token() }}"><link rel="icon" type="image/png" href="{{ asset('favicon.png') }}"><title>{{ $title }} · Proflect</title>@vite(['resources/css/app.css','resources/js/app.js'])</head>
 <body class="dashboard-body customer-nav-body">
 @php($customerNotifications = auth()->user()->notifications()->latest()->limit(30)->get())
 <header class="customer-navbar">
@@ -24,6 +24,6 @@
 </header>
 <main class="customer-main customer-main--navbar">
     <header class="customer-page-head"><div><p class="topbar__kicker">CUSTOMER PORTAL</p><h1>{{ $title }}</h1></div></header>
-    <div class="dashboard-content">@if(session('status'))<div class="alert alert--success">{{ session('status') }}</div>@endif @if($errors->any())<div class="alert admin-error" role="alert">{{ $errors->first() }}</div>@endif {{ $slot }}</div>
+    <div class="dashboard-content">@if(session('status'))<div class="alert alert--success">{{ session('status') }}</div>@endif @if($errors->any())<div class="alert admin-error" role="alert">{{ $errors->first() }}</div>@endif {{ $slot }}<p class="vehicle-data-credit">Vehicle data by <a href="https://vehiclesdb.com">VehiclesDB</a> · <a href="{{ route('vehicle-data.credits') }}">Source credits</a></p></div>
 </main>
 </body></html>

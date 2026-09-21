@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="csrf-token" content="{{ csrf_token() }}"><title>Choose protection · Proflect</title>@vite(['resources/css/app.css','resources/js/app.js'])<style>.plan-cards{max-width:1120px}.plan-card form{margin:0}.free-price{font-size:32px!important;letter-spacing:.04em}</style></head>
+<!DOCTYPE html><html lang="en"><head><link rel="icon" type="image/png" href="{{ asset('favicon.png') }}"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="csrf-token" content="{{ csrf_token() }}"><title>Choose protection · Proflect</title>@vite(['resources/css/app.css','resources/js/app.js'])<style>.plan-cards{max-width:1120px}.plan-card form{margin:0}.free-price{font-size:32px!important;letter-spacing:.04em}</style></head>
 <body class="offer-body">
 <header class="offer-header"><x-brand light/><div class="offer-header__right"><span>Step 1 of 3</span><form method="POST" action="{{ route('logout') }}">@csrf<button>Sign out</button></form></div></header>
 <section class="offer-hero"><div><span class="eyebrow eyebrow--light">EXCLUSIVE CUSTOMER OFFER</span><h1>Keep your PPF protected<br>after the unexpected.</h1><p>Optional accidental-damage replacement support for eligible Proflect PPF customers.</p></div><div class="offer-car" aria-hidden="true"><span></span></div></section>
@@ -20,3 +20,5 @@
     </article>@endforeach</div>@endif
     <div class="covered-grid"><div><i>✓</i><p><b>Covered</b><br>Approved accidental panel damage. Replacement includes PPF film and labour.</p></div><div><i>×</i><p><b>Not covered</b><br>Peeling and yellowing stay under standard warranty. Ceramic coating is excluded.</p></div><div><i>⌁</i><p><b>Simple claims</b><br>Submit panel damage online and track every update from your dashboard.</p></div></div>
 </main></body></html>
+
+\n

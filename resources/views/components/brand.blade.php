@@ -1,6 +1,6 @@
 @props(['light' => false])
 
 <a href="{{ auth()->check() ? route('dashboard') : url('/') }}" class="brand {{ $light ? 'brand--light' : '' }}" aria-label="Proflect home">
-    <span class="brand__mark" aria-hidden="true"><span>P</span></span>
+    <img class="brand__logo" src="{{ asset('images/proflect-logo.webp') }}" alt="" aria-hidden="true">
     <span class="brand__word">PROFLECT</span>
 </a>

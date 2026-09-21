@@ -19,11 +19,11 @@ class Claim extends Model
         'other' => 'Other',
     ];
 
-    protected $fillable = ['claim_number', 'user_id', 'subscription_id', 'warranty_code_id', 'vehicle_make', 'vehicle_model', 'registration_number', 'vehicle_year', 'panels', 'photos', 'description', 'status', 'admin_notes', 'reviewed_at', 'booking_date'];
+    protected $fillable = ['claim_number', 'user_id', 'subscription_id', 'warranty_code_id', 'vehicle_make', 'vehicle_model', 'vehicle_model_id', 'registration_number', 'vehicle_year', 'panels', 'panel_details', 'photos', 'description', 'status', 'admin_notes', 'reviewed_at', 'booking_date'];
 
     protected function casts(): array
     {
-        return ['panels' => 'array', 'photos' => 'array', 'reviewed_at' => 'datetime', 'booking_date' => 'date'];
+        return ['panels' => 'array', 'panel_details' => 'array', 'photos' => 'array', 'reviewed_at' => 'datetime', 'booking_date' => 'date'];
     }
 
     public function user(): BelongsTo

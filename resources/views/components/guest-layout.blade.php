@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <title>{{ $title ?? 'Customer account' }} · {{ config('app.name', 'Proflect') }}</title>
     <meta name="description" content="Manage your Proflect PPF replacement program.">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -36,7 +37,7 @@
         <section class="auth-panel">
             <div class="auth-panel__mobile-brand"><x-brand /></div>
             <div class="auth-card">{{ $slot }}</div>
-            <p class="auth-copyright">© {{ date('Y') }} Proflect. All rights reserved. <a href="#">Privacy</a></p>
+            <p class="auth-copyright">© {{ date('Y') }} Proflect. All rights reserved. <a href="{{ route('privacy') }}">Privacy</a></p>
         </section>
     </main>
 </body>

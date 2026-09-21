@@ -55,7 +55,7 @@ class PortalWorkflowTest extends TestCase
         $admin = Admin::create(['name' => 'Admin', 'email' => 'admin@ppf.com', 'password' => 'admin123']);
         $this->post(route('admin.login.store'), ['email' => 'admin@ppf.com', 'password' => 'admin123'])->assertRedirect(route('admin.dashboard'));
         $this->assertAuthenticatedAs($admin, 'admin');
-        $this->get(route('admin.vehicles.index'))->assertOk()->assertSee('Customer vehicles')->assertSee('Warranty Codes')->assertSee('Subscription Plans');
+        $this->get(route('admin.vehicles.index'))->assertOk()->assertSee('Vehicle catalog')->assertSee('Warranty Codes')->assertSee('Subscription Plans');
         $this->get(route('admin.warranty-codes.index'))->assertOk()->assertSee('Warranty codes');
         $this->post(route('admin.plans.store'), ['name' => 'Platinum Plan', 'price_dollars' => 1299, 'duration_years' => 5, 'coverage_sqm' => 8, 'features_text' => "Damage cover\nLabour included", 'accent' => 'black', 'is_active' => 1, 'sort_order' => 3])->assertRedirect(route('admin.plans.index'));
         $this->assertDatabaseHas('plans', ['slug' => 'platinum-plan', 'price' => 129900, 'currency' => 'USD']);

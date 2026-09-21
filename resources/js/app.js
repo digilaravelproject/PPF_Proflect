@@ -148,11 +148,14 @@ document.querySelectorAll('[data-payment-button]').forEach((button) => {
 document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
     let step = 1;
     const form = wizard.querySelector('form');
-    const panelInputs = [...wizard.querySelectorAll('[data-panel-input]')];
+    let panelInputs = [];
     const photoInput = wizard.querySelector('[data-photo-input]');
     const description = wizard.querySelector('textarea[name="description"]');
-    const vehicleMake = wizard.querySelector('[name="vehicle_make"]');
-    const vehicleModel = wizard.querySelector('[name="vehicle_model"]');
+    const vehicleMake = wizard.querySelector('[name="vehicle_make_id"]');
+    const vehicleModel = wizard.querySelector('[name="vehicle_model_id"]');
+    const panelContainer = wizard.querySelector('[data-model-panels]');
+    const modelPhoto = wizard.querySelector('[data-model-photo]');
+    const oldPanels = new Set(JSON.parse(wizard.querySelector('[data-old-panels]')?.textContent || '[]'));
     const registration = wizard.querySelector('[name="registration_number"]');
     const vehicleYear = wizard.querySelector('[name="vehicle_year"]');
     const warrantyCode = wizard.querySelector('[name="warranty_code"]');
@@ -167,6 +170,116 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
     errorBox.setAttribute('role', 'alert');
     errorBox.hidden = true;
     form.prepend(errorBox);
+
+    let modelsRequest = 0;
+    let modelRequest = 0;
+    let selectedModelData = null;
+    const selectedMakeName = () => vehicleMake.selectedOptions[0]?.textContent || '';
+    const selectedModelName = () => vehicleModel.selectedOptions[0]?.textContent || '';
+    const populateModels = async (preferred = '') => {
+        const request = ++modelsRequest;
+        ++modelRequest;
+        vehicleModel.replaceChildren(new Option(vehicleMake.value ? 'Loading models…' : 'Select vehicle make first', ''));
+        selectedModelData = null;
+        renderEmptyModel();
+        if (!vehicleMake.value) return;
+        try {
+            const response = await fetch(`${form.dataset.catalogMakesUrl}/${encodeURIComponent(vehicleMake.value)}/models`, {headers: {'Accept': 'application/json'}});
+            if (!response.ok) throw new Error('Could not load models.');
+            const models = await response.json();
+            if (request !== modelsRequest) return;
+            vehicleModel.replaceChildren(new Option('Select vehicle model', ''));
+            models.forEach((model) => vehicleModel.add(new Option(`${model.name} · ${model.kind}`, model.id)));
+            vehicleModel.value = preferred;
+            if (!vehicleModel.value) vehicleModel.value = '';
+            if (vehicleModel.value) await renderModel();
+        } catch (error) {
+            if (request === modelsRequest) {
+                vehicleModel.replaceChildren(new Option('Models unavailable. Try again.', ''));
+                showWizardError(error.message);
+            }
+        }
+    };
+    const renderEmptyModel = () => {
+        panelContainer.replaceChildren();
+        panelInputs = [];
+        const note = document.createElement('p');
+        note.className = 'catalog-empty-note';
+        note.textContent = 'Select a vehicle model to see its panels.';
+        panelContainer.append(note);
+        const stage = modelPhoto.querySelector('[data-model-photo-stage]');
+        const img = stage.querySelector('img');
+        stage.hidden = true;
+        img.removeAttribute('src');
+        img.alt = '';
+        modelPhoto.querySelector('[data-model-hotspots]').replaceChildren();
+        modelPhoto.querySelector('.model-photo__pending').hidden = false;
+        modelPhoto.querySelector('small').textContent = 'Select a model to see its photo.';
+    };
+    const renderModel = async () => {
+        const request = ++modelRequest;
+        selectedModelData = null;
+        renderEmptyModel();
+        if (!vehicleModel.value) return;
+        try {
+            const response = await fetch(`${form.dataset.catalogModelsUrl}/${encodeURIComponent(vehicleModel.value)}`, {headers: {'Accept': 'application/json'}});
+            if (!response.ok) throw new Error('Could not load model details.');
+            const model = await response.json();
+            if (request !== modelRequest) return;
+            selectedModelData = model;
+            panelContainer.replaceChildren();
+            model.panels.forEach((panel) => {
+                const label = document.createElement('label');
+                const input = document.createElement('input');
+                input.type = 'checkbox'; input.name = 'panels[]'; input.value = panel.key;
+                input.dataset.panelInput = '';
+                input.checked = oldPanels.has(panel.key);
+                input.addEventListener('change', syncPanels);
+                const name = document.createElement('span');
+                const range = panel.min_sqm === null || panel.max_sqm === null
+                    ? 'area range pending'
+                    : `min ${Number(panel.min_sqm).toFixed(2)} m², max ${Number(panel.max_sqm).toFixed(2)} m²`;
+                name.textContent = `${panel.name} (${range})`;
+                label.append(input, name); panelContainer.append(label); panelInputs.push(input);
+            });
+            const img = modelPhoto.querySelector('img');
+            const stage = modelPhoto.querySelector('[data-model-photo-stage]');
+            stage.hidden = !model.photo_url;
+            if (model.photo_url) img.src = model.photo_url;
+            img.alt = model.photo_url ? `${model.make_name} ${model.name}` : '';
+            modelPhoto.querySelector('.model-photo__pending').hidden = Boolean(model.photo_url);
+            modelPhoto.querySelector('small').textContent = model.photo_url
+                ? `${model.make_name} ${model.name}` : 'Model photo pending';
+            const hotspots = modelPhoto.querySelector('[data-model-hotspots]');
+            hotspots.replaceChildren();
+            if (model.photo_url) model.panels.forEach((panel) => {
+                if (panel.photo_x === null || panel.photo_y === null) return;
+                const spot = document.createElement('button');
+                spot.type = 'button'; spot.className = 'model-panel-spot';
+                spot.dataset.panelKey = panel.key;
+                spot.style.left = `${Number(panel.photo_x)}%`;
+                spot.style.top = `${Number(panel.photo_y)}%`;
+                spot.setAttribute('aria-label', `Select ${panel.name}`);
+                spot.title = panel.name;
+                spot.addEventListener('click', () => {
+                    const input = panelInputs.find((item) => item.value === panel.key);
+                    if (input) { input.checked = !input.checked; syncPanels(); }
+                });
+                hotspots.append(spot);
+            });
+            if (model.photo_url) {
+                modelPhoto.querySelector('small').textContent = hotspots.childElementCount
+                    ? `${model.make_name} ${model.name} · tap a marked area or use the checklist`
+                    : `${model.make_name} ${model.name} · use the checklist (photo spots not mapped yet)`;
+            }
+            syncPanels();
+        } catch (error) {
+            if (request === modelRequest) showWizardError(error.message);
+        }
+    };
+    vehicleMake.addEventListener('change', () => { populateModels(); });
+    vehicleModel.addEventListener('change', () => { renderModel(); });
+    populateModels(vehicleModel.dataset.oldModel || '');
 
     const showWizardError = (message, input = null) => {
         errorBox.textContent = message;
@@ -237,7 +350,7 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
             warrantyFeedback.scrollIntoView({behavior: 'smooth', block: 'center'});
             return false;
         }
-        const labels = {vehicle_make: 'vehicle make', vehicle_model: 'vehicle model', registration_number: 'registration number'};
+        const labels = {vehicle_make_id: 'vehicle make', vehicle_model_id: 'vehicle model', registration_number: 'registration number'};
         const missing = [vehicleMake, vehicleModel, registration].find((input) => !input.value.trim());
         if (missing) {
             showWizardError(`Please enter the ${labels[missing.name]}.`, missing);
@@ -281,6 +394,13 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
 
     const syncPanels = () => {
         panelInputs.forEach((input) => wizard.querySelector(`[data-panel-shape="${input.value}"]`)?.classList.toggle('selected', input.checked));
+        modelPhoto.querySelectorAll('[data-panel-key]').forEach((spot) => {
+            const selected = panelInputs.find((input) => input.value === spot.dataset.panelKey)?.checked || false;
+            spot.classList.toggle('selected', selected);
+            spot.setAttribute('aria-pressed', String(selected));
+            const name = spot.title;
+            spot.setAttribute('aria-label', `${selected ? 'Deselect' : 'Select'} ${name}`);
+        });
     };
 
     wizard.querySelectorAll('[data-panel-shape]').forEach((shape) => shape.addEventListener('click', () => {
@@ -290,7 +410,6 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
             syncPanels();
         }
     }));
-    panelInputs.forEach((input) => input.addEventListener('change', syncPanels));
 
     const renderPhotos = () => {
         const preview = wizard.querySelector('[data-photo-previews]');
@@ -334,7 +453,7 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
         const count = photoInput.files?.length || 0;
         wizard.querySelector('[data-review-photos]').textContent = `${count} photo${count === 1 ? '' : 's'} ready to submit`;
         wizard.querySelector('[data-review-description]').textContent = description.value.trim() || 'No additional details provided.';
-        wizard.querySelector('[data-review-vehicle]').textContent = `${vehicleMake.value.trim()} ${vehicleModel.value.trim()}`;
+        wizard.querySelector('[data-review-vehicle]').textContent = `${selectedMakeName()} ${selectedModelData?.name || selectedModelName()}`.trim();
         wizard.querySelector('[data-review-registration]').textContent = registration.value.trim().toUpperCase();
         const photoStrip = wizard.querySelector('[data-review-photo-strip]');
         photoStrip.innerHTML = '';
@@ -376,4 +495,95 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
         form.querySelector('button[type="submit"]')?.setAttribute('disabled', 'disabled');
     });
     syncPanels();
+});
+
+document.querySelectorAll('[data-catalog-panels]').forEach((container) => {
+    const form = container.closest('form');
+    const photo = form.querySelector('[data-catalog-photo]');
+    const photoInput = photo.querySelector('input[type="file"]');
+    const preview = photo.querySelector('[data-photo-preview]');
+    const stage = photo.querySelector('[data-photo-stage]');
+    const previewImage = stage.querySelector('img');
+    const markers = stage.querySelector('[data-photo-markers]');
+    const removePhoto = photo.querySelector('[data-remove-photo]');
+    const removalNote = photo.querySelector('[data-photo-removal-note]');
+    let activeRow = null;
+    let previewUrl = null;
+    const drawMarkers = () => {
+        markers.replaceChildren();
+        container.querySelectorAll('[data-catalog-panel-row]').forEach((row) => {
+            const x = row.querySelector('[data-photo-x]').value;
+            const y = row.querySelector('[data-photo-y]').value;
+            const button = row.querySelector('[data-set-panel-spot]');
+            button.classList.toggle('is-mapped', x !== '' && y !== '');
+            button.classList.toggle('is-setting', row === activeRow);
+            button.textContent = row === activeRow ? 'Click photo…' : (x !== '' && y !== '' ? 'Move spot' : 'Set spot');
+            if (x === '' || y === '') return;
+            const dot = document.createElement('span');
+            dot.className = 'catalog-photo-marker';
+            dot.style.left = `${Number(x)}%`; dot.style.top = `${Number(y)}%`;
+            dot.title = row.querySelector('input[name$="[name]"]').value;
+            markers.append(dot);
+        });
+        stage.classList.toggle('is-setting', Boolean(activeRow));
+    };
+    photoInput.addEventListener('change', () => {
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        const file = photoInput.files?.[0];
+        if (!file) return;
+        previewUrl = URL.createObjectURL(file);
+        previewImage.src = previewUrl;
+        preview.hidden = false;
+        removePhoto.value = '0';
+        removalNote.hidden = true;
+        drawMarkers();
+    });
+    photo.querySelector('[data-remove-model-photo]').addEventListener('click', () => {
+        photoInput.value = '';
+        if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+        previewImage.removeAttribute('src'); preview.hidden = true;
+        removePhoto.value = '1'; removalNote.hidden = false;
+        activeRow = null; drawMarkers();
+    });
+    stage.addEventListener('click', (event) => {
+        if (!activeRow) return;
+        const rect = previewImage.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        activeRow.querySelector('[data-photo-x]').value = (Math.max(0, Math.min(100, (event.clientX - rect.left) / rect.width * 100))).toFixed(2);
+        activeRow.querySelector('[data-photo-y]').value = (Math.max(0, Math.min(100, (event.clientY - rect.top) / rect.height * 100))).toFixed(2);
+        activeRow = null; drawMarkers();
+    });
+    form.querySelector('[data-add-panel]')?.addEventListener('click', () => {
+        const index = Number(container.dataset.nextIndex || 0);
+        container.dataset.nextIndex = String(index + 1);
+        const row = document.createElement('div');
+        row.className = 'catalog-panel-row';
+        row.dataset.catalogPanelRow = '';
+        [['Panel name', 'name', 'text'], ['Min m²', 'min_sqm', 'number'], ['Max m²', 'max_sqm', 'number']].forEach(([labelText, key, type]) => {
+            const field = document.createElement('div'); field.className = 'field';
+            const label = document.createElement('label'); label.textContent = labelText;
+            const control = document.createElement('div'); control.className = 'field__control';
+            const input = document.createElement('input'); input.name = `panels[${index}][${key}]`; input.type = type; input.required = true;
+            if (type === 'number') { input.step = '0.01'; input.min = '0'; }
+            control.append(input); field.append(label, control); row.append(field);
+        });
+        const position = document.createElement('div'); position.className = 'catalog-panel-position';
+        ['photo_x', 'photo_y'].forEach((key) => { const input = document.createElement('input'); input.type = 'hidden'; input.name = `panels[${index}][${key}]`; input.dataset[key === 'photo_x' ? 'photoX' : 'photoY'] = ''; position.append(input); });
+        const setSpot = document.createElement('button'); setSpot.type = 'button'; setSpot.dataset.setPanelSpot = ''; setSpot.textContent = 'Set spot'; position.append(setSpot);
+        const clearSpot = document.createElement('button'); clearSpot.type = 'button'; clearSpot.dataset.clearPanelSpot = ''; clearSpot.textContent = '×'; clearSpot.title = 'Clear panel spot'; clearSpot.setAttribute('aria-label', 'Clear panel spot'); position.append(clearSpot); row.append(position);
+        const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'icon-action icon-action--danger'; remove.dataset.removePanel = ''; remove.textContent = '×'; remove.setAttribute('aria-label', 'Remove panel'); row.append(remove);
+        container.append(row); row.querySelector('input')?.focus();
+    });
+    container.addEventListener('click', (event) => {
+        const row = event.target.closest('[data-catalog-panel-row]');
+        if (!row) return;
+        if (event.target.closest('[data-remove-panel]')) { if (activeRow === row) activeRow = null; row.remove(); drawMarkers(); }
+        if (event.target.closest('[data-clear-panel-spot]')) { row.querySelector('[data-photo-x]').value = ''; row.querySelector('[data-photo-y]').value = ''; if (activeRow === row) activeRow = null; drawMarkers(); }
+        if (event.target.closest('[data-set-panel-spot]')) {
+            if (preview.hidden) { photoInput.focus(); return; }
+            activeRow = activeRow === row ? null : row; drawMarkers();
+            if (activeRow) preview.scrollIntoView({behavior: 'smooth', block: 'center'});
+        }
+    });
+    drawMarkers();
 });

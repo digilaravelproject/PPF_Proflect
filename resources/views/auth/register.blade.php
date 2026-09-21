@@ -57,7 +57,7 @@
 
         <label class="check-row">
             <input type="checkbox" name="terms" value="1" {{ old('terms') ? 'checked' : '' }} required>
-            <span>I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</span>
+            <span>I agree to the <a href="{{ route('terms') }}" target="_blank" rel="noopener">Terms of Service</a> and <a href="{{ route('privacy') }}" target="_blank" rel="noopener">Privacy Policy</a>.</span>
         </label>
         @error('terms') <p class="field__error field__error--raised">{{ $message }}</p> @enderror
 

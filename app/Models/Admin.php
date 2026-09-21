@@ -18,4 +18,9 @@ class Admin extends Authenticatable
     {
         return ['password' => 'hashed'];
     }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new \App\Notifications\AdminResetPasswordNotification($token));
+    }
 }
