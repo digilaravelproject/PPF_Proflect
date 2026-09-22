@@ -86,17 +86,19 @@ body{background:#f7f5f0}
 .catalog-photo-preview{position:relative;display:inline-block;width:auto;max-width:100%;max-height:none;padding:8px;margin-top:12px}
 .catalog-photo-preview[hidden],.model-photo__stage[hidden]{display:none}
 .catalog-photo-stage{position:relative;display:block;width:fit-content;max-width:100%;cursor:default}
-.catalog-photo-stage.is-setting{cursor:crosshair}
+.catalog-photo-stage.is-setting{cursor:crosshair;touch-action:none}
 .catalog-photo-stage>svg,.model-photo__stage>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .catalog-photo-stage>svg{pointer-events:none;touch-action:none}
 .catalog-photo-area{fill:rgba(219,163,66,.25);stroke:#ad6a12;stroke-width:.55;vector-effect:non-scaling-stroke;pointer-events:visiblePainted;cursor:grab}
 .catalog-photo-area:hover{fill:rgba(219,163,66,.4);stroke:#8f5309}
+.catalog-photo-area.is-selected{fill:rgba(219,163,66,.35);stroke:#7d4403;stroke-width:2}
+.catalog-photo-handle{fill:#fff;stroke:#9d5709;stroke-width:2;vector-effect:non-scaling-stroke;pointer-events:all;cursor:move}
 .catalog-photo-stage.is-dragging,.catalog-photo-stage.is-dragging .catalog-photo-area{cursor:grabbing}
-.catalog-photo-draft{fill:none;stroke:#ed9b27;stroke-width:2;stroke-dasharray:5 4;vector-effect:non-scaling-stroke}
-.catalog-photo-corner{fill:#e5a33d;stroke:#fff;stroke-width:1;vector-effect:non-scaling-stroke}
+.catalog-photo-stage.is-setting.is-dragging{cursor:crosshair}
+.catalog-photo-draft{fill:rgba(219,163,66,.28);stroke:#ed9b27;stroke-width:2;stroke-dasharray:5 4;vector-effect:non-scaling-stroke;pointer-events:none}
 .catalog-photo-instruction{margin:9px 0 0;color:#7b531d;font-size:12px;font-weight:700}
-.catalog-photo-undo{margin-top:6px;border:0;padding:3px 0;background:transparent;color:#704915;text-decoration:underline;cursor:pointer;font-size:12px}
-.catalog-photo-undo[hidden]{display:none}
+.catalog-photo-cancel{margin-top:6px;border:0;padding:3px 0;background:transparent;color:#704915;text-decoration:underline;cursor:pointer;font-size:12px}
+.catalog-photo-cancel[hidden]{display:none}
 .model-panel-area{fill:rgba(225,159,48,.11);stroke:rgba(161,96,11,.7);stroke-width:1.5;vector-effect:non-scaling-stroke;cursor:pointer;transition:fill .15s,stroke .15s}
 .model-panel-area:hover,.model-panel-area:focus-visible{fill:rgba(239,175,62,.34);stroke:#995511;outline:none}
 .model-panel-area.selected{fill:rgba(245,170,35,.57);stroke:#a85803;stroke-width:2.5}

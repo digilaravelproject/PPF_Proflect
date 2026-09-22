@@ -530,12 +530,26 @@ document.querySelectorAll('[data-catalog-panels]').forEach((container) => {
     const instruction = photo.querySelector('[data-photo-instruction]');
     const removePhoto = photo.querySelector('[data-remove-photo]');
     const removalNote = photo.querySelector('[data-photo-removal-note]');
-    const undoPoint = photo.querySelector('[data-undo-photo-point]');
+    const cancelDraw = photo.querySelector('[data-cancel-photo-draw]');
     let activeRow = null;
-    let draftPoints = [];
+    let selectedRow = null;
+    let draftPoints = null;
     let drawingError = '';
     let previewUrl = null;
-    let dragging = null;
+    let gesture = null;
+    const readPoints = (row) => {
+        try { return JSON.parse(row.querySelector('[data-photo-polygon]').value); }
+        catch (_) { return null; }
+    };
+    const savePoints = (row, points) => {
+        row.querySelector('[data-photo-polygon]').value = JSON.stringify(points);
+    };
+    const rectangle = (a, b) => [
+        { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y) },
+        { x: Math.max(a.x, b.x), y: Math.min(a.y, b.y) },
+        { x: Math.max(a.x, b.x), y: Math.max(a.y, b.y) },
+        { x: Math.min(a.x, b.x), y: Math.max(a.y, b.y) },
+    ];
     const pointAt = (event) => {
         const rect = previewImage.getBoundingClientRect();
         if (!rect.width || !rect.height) return null;
@@ -557,36 +571,36 @@ document.querySelectorAll('[data-catalog-panels]').forEach((container) => {
     const drawAreas = () => {
         areas.replaceChildren();
         container.querySelectorAll('[data-catalog-panel-row]').forEach((row) => {
-            let points = null;
-            try { points = JSON.parse(row.querySelector('[data-photo-polygon]').value); } catch (_) { /* Unmapped panel. */ }
+            const points = readPoints(row);
             const button = row.querySelector('[data-draw-panel-area]');
             button.classList.toggle('is-mapped', validPanelArea(points));
             button.classList.toggle('is-setting', row === activeRow);
-            button.textContent = row === activeRow ? `Corner ${draftPoints.length + 1} of 4` : (validPanelArea(points) ? 'Redraw area' : 'Draw area');
+            button.textContent = row === activeRow ? 'Drawing…' : (validPanelArea(points) ? 'Redraw area' : 'Draw area');
             if (!validPanelArea(points) || row === activeRow) return;
             const polygon = svgElement('polygon');
             polygon.setAttribute('points', areaPoints(points));
-            polygon.setAttribute('class', 'catalog-photo-area');
+            polygon.setAttribute('class', `catalog-photo-area${row === selectedRow ? ' is-selected' : ''}`);
             polygon.panelRow = row;
             const title = svgElement('title'); title.textContent = row.querySelector('input[name$="[name]"]').value;
             polygon.append(title); areas.append(polygon);
-        });
-        if (activeRow && draftPoints.length) {
-            const line = svgElement('polyline');
-            line.setAttribute('points', areaPoints(draftPoints));
-            line.setAttribute('class', 'catalog-photo-draft'); areas.append(line);
-            draftPoints.forEach((point, index) => {
-                const dot = svgElement('circle');
-                dot.setAttribute('cx', point.x); dot.setAttribute('cy', point.y); dot.setAttribute('r', '1.25');
-                dot.setAttribute('class', 'catalog-photo-corner');
-                const title = svgElement('title'); title.textContent = `Corner ${index + 1}`; dot.append(title); areas.append(dot);
+            if (row === selectedRow) points.forEach((point, index) => {
+                const handle = svgElement('circle');
+                handle.setAttribute('cx', point.x); handle.setAttribute('cy', point.y);
+                handle.setAttribute('r', '2.2'); handle.setAttribute('class', 'catalog-photo-handle');
+                handle.panelRow = row; handle.cornerIndex = index;
+                areas.append(handle);
             });
+        });
+        if (activeRow && draftPoints) {
+            const draft = svgElement('polygon');
+            draft.setAttribute('points', areaPoints(draftPoints));
+            draft.setAttribute('class', 'catalog-photo-draft'); areas.append(draft);
         }
         stage.classList.toggle('is-setting', Boolean(activeRow));
         instruction.textContent = drawingError || (activeRow
-            ? `Draw ${activeRow.querySelector('input[name$="[name]"]').value}: click corner ${draftPoints.length + 1} of 4, moving around the panel edge.`
-            : 'Choose “Draw area” beside a panel, then click four corners on the photo. Drag a finished area to move it.');
-        undoPoint.hidden = !activeRow || !draftPoints.length;
+            ? `Draw ${activeRow.querySelector('input[name$="[name]"]').value}: press on the photo, drag across the panel, and release.`
+            : 'Drag an area to move it. Click an area and drag its corner handles to adjust its shape.');
+        cancelDraw.hidden = !activeRow;
         syncOverlay();
     };
     photoInput.addEventListener('change', () => {
@@ -605,63 +619,93 @@ document.querySelectorAll('[data-catalog-panels]').forEach((container) => {
         if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
         previewImage.removeAttribute('src'); preview.hidden = true;
         removePhoto.value = '1'; removalNote.hidden = false;
-        activeRow = null; draftPoints = []; drawingError = ''; drawAreas();
+        activeRow = null; selectedRow = null; draftPoints = null; gesture = null; drawingError = ''; drawAreas();
     });
     stage.addEventListener('pointerdown', (event) => {
         if (event.button !== 0 || preview.hidden) return;
-        const polygon = event.target.closest?.('.catalog-photo-area');
-        if (!activeRow && polygon?.panelRow) {
-            const points = JSON.parse(polygon.panelRow.querySelector('[data-photo-polygon]').value);
-            dragging = { row: polygon.panelRow, points, start: pointAt(event), pointerId: event.pointerId };
-            stage.setPointerCapture(event.pointerId);
-            stage.classList.add('is-dragging');
-            event.preventDefault();
-            return;
-        }
-        if (!activeRow) return;
         const imageRect = previewImage.getBoundingClientRect();
         if (event.clientX < imageRect.left || event.clientX > imageRect.right || event.clientY < imageRect.top || event.clientY > imageRect.bottom) return;
         const point = pointAt(event);
         if (!point) return;
-        drawingError = '';
-        draftPoints.push(point);
-        if (draftPoints.length === 4) {
-            if (simplePanelArea(draftPoints)) {
-                activeRow.querySelector('[data-photo-polygon]').value = JSON.stringify(draftPoints);
-                activeRow = null; draftPoints = [];
-            } else {
-                draftPoints = [];
-                drawingError = 'Corners must go around the panel edge in order. Try the four corners again.';
-            }
+        const handle = event.target.closest?.('.catalog-photo-handle');
+        const polygon = event.target.closest?.('.catalog-photo-area');
+        if (activeRow) {
+            gesture = { type: 'draw', row: activeRow, start: point, pointerId: event.pointerId };
+            draftPoints = rectangle(point, point);
+            drawingError = '';
+        } else if (handle?.panelRow) {
+            selectedRow = handle.panelRow;
+            gesture = { type: 'corner', row: handle.panelRow, points: readPoints(handle.panelRow), cornerIndex: handle.cornerIndex, pointerId: event.pointerId };
+        } else if (polygon?.panelRow) {
+            selectedRow = polygon.panelRow;
+            gesture = { type: 'move', row: polygon.panelRow, points: readPoints(polygon.panelRow), start: point, pointerId: event.pointerId };
+        } else {
+            selectedRow = null;
+            drawAreas();
+            return;
         }
+        stage.setPointerCapture(event.pointerId);
+        stage.classList.add('is-dragging');
+        event.preventDefault();
         drawAreas();
     });
     stage.addEventListener('pointermove', (event) => {
-        if (!dragging || dragging.pointerId !== event.pointerId) return;
+        if (!gesture || gesture.pointerId !== event.pointerId) return;
         const current = pointAt(event);
-        if (!current || !dragging.start) return;
-        const minX = Math.min(...dragging.points.map((point) => point.x));
-        const maxX = Math.max(...dragging.points.map((point) => point.x));
-        const minY = Math.min(...dragging.points.map((point) => point.y));
-        const maxY = Math.max(...dragging.points.map((point) => point.y));
-        const dx = Math.max(-minX, Math.min(100 - maxX, current.x - dragging.start.x));
-        const dy = Math.max(-minY, Math.min(100 - maxY, current.y - dragging.start.y));
-        dragging.row.querySelector('[data-photo-polygon]').value = JSON.stringify(dragging.points.map((point) => ({
-            x: Number((point.x + dx).toFixed(2)), y: Number((point.y + dy).toFixed(2)),
-        })));
+        if (!current) return;
+        if (gesture.type === 'draw') {
+            draftPoints = rectangle(gesture.start, current);
+        } else if (gesture.type === 'corner') {
+            const points = gesture.points.map((point) => ({ ...point }));
+            points[gesture.cornerIndex] = current;
+            if (simplePanelArea(points)) savePoints(gesture.row, points);
+        } else {
+            const minX = Math.min(...gesture.points.map((point) => point.x));
+            const maxX = Math.max(...gesture.points.map((point) => point.x));
+            const minY = Math.min(...gesture.points.map((point) => point.y));
+            const maxY = Math.max(...gesture.points.map((point) => point.y));
+            const dx = Math.max(-minX, Math.min(100 - maxX, current.x - gesture.start.x));
+            const dy = Math.max(-minY, Math.min(100 - maxY, current.y - gesture.start.y));
+            savePoints(gesture.row, gesture.points.map((point) => ({
+                x: Number((point.x + dx).toFixed(2)), y: Number((point.y + dy).toFixed(2)),
+            })));
+        }
         drawAreas();
     });
-    const stopDragging = (event) => {
-        if (!dragging || dragging.pointerId !== event.pointerId) return;
-        dragging = null;
+    const stopGesture = (event) => {
+        if (!gesture || gesture.pointerId !== event.pointerId) return;
+        if (gesture.type === 'draw') {
+            const end = pointAt(event);
+            const points = end ? rectangle(gesture.start, end) : null;
+            if (points && simplePanelArea(points)) {
+                savePoints(gesture.row, points);
+                selectedRow = gesture.row;
+                activeRow = null;
+                drawingError = '';
+            } else {
+                drawingError = 'Drag across the panel to make an area, then release. Make it a little larger.';
+            }
+            draftPoints = null;
+        }
+        gesture = null;
         stage.classList.remove('is-dragging');
         if (stage.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId);
+        drawAreas();
     };
-    stage.addEventListener('pointerup', stopDragging);
-    stage.addEventListener('pointercancel', stopDragging);
-    undoPoint.addEventListener('click', () => {
-        if (!activeRow || !draftPoints.length) return;
-        draftPoints.pop(); drawingError = ''; drawAreas();
+    stage.addEventListener('pointerup', stopGesture);
+    stage.addEventListener('pointercancel', (event) => {
+        if (gesture?.pointerId !== event.pointerId) return;
+        gesture = null; draftPoints = null;
+        stage.classList.remove('is-dragging'); drawAreas();
+    });
+    const cancelDrawing = () => {
+        if (gesture && stage.hasPointerCapture(gesture.pointerId)) stage.releasePointerCapture(gesture.pointerId);
+        gesture = null; activeRow = null; draftPoints = null; drawingError = '';
+        stage.classList.remove('is-dragging'); drawAreas();
+    };
+    cancelDraw.addEventListener('click', cancelDrawing);
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && activeRow) cancelDrawing();
     });
     form.querySelector('[data-add-panel]')?.addEventListener('click', () => {
         const index = Number(container.dataset.nextIndex || 0);
@@ -687,11 +731,11 @@ document.querySelectorAll('[data-catalog-panels]').forEach((container) => {
     container.addEventListener('click', (event) => {
         const row = event.target.closest('[data-catalog-panel-row]');
         if (!row) return;
-        if (event.target.closest('[data-remove-panel]')) { if (activeRow === row) { activeRow = null; draftPoints = []; } row.remove(); drawingError = ''; drawAreas(); }
-        if (event.target.closest('[data-clear-panel-area]')) { row.querySelector('[data-photo-polygon]').value = ''; if (activeRow === row) { activeRow = null; draftPoints = []; } drawingError = ''; drawAreas(); }
+        if (event.target.closest('[data-remove-panel]')) { if (activeRow === row) { activeRow = null; draftPoints = null; } if (selectedRow === row) selectedRow = null; row.remove(); drawingError = ''; drawAreas(); }
+        if (event.target.closest('[data-clear-panel-area]')) { row.querySelector('[data-photo-polygon]').value = ''; if (activeRow === row) { activeRow = null; draftPoints = null; } if (selectedRow === row) selectedRow = null; drawingError = ''; drawAreas(); }
         if (event.target.closest('[data-draw-panel-area]')) {
             if (preview.hidden) { photoInput.focus(); return; }
-            activeRow = activeRow === row ? null : row; draftPoints = []; drawingError = ''; drawAreas();
+            activeRow = activeRow === row ? null : row; selectedRow = null; draftPoints = null; drawingError = ''; drawAreas();
             if (activeRow) preview.scrollIntoView({behavior: 'smooth', block: 'center'});
         }
     });
