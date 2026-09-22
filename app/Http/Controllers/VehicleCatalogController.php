@@ -24,7 +24,7 @@ class VehicleCatalogController extends Controller
         return response()->json([
             'id' => $model->id, 'name' => $model->name, 'kind' => $model->kind,
             'make_name' => $model->make->name, 'photo_url' => $model->photo_url,
-            'panels' => $model->panels()->orderBy('id')->get(['key', 'name', 'min_sqm', 'max_sqm', 'photo_x', 'photo_y']),
+            'panels' => $model->panels()->orderBy('id')->get(['key', 'name', 'min_sqm', 'max_sqm', 'photo_polygon']),
         ]);
     }
 }

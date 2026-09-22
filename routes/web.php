@@ -105,6 +105,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::patch('/vehicles/{vehicle}/models/{model}/toggle', [AdminVehicleModelController::class, 'toggle'])->name('vehicles.models.toggle');
         Route::get('/claims/report', [AdminClaimController::class, 'report'])->name('claims.report');
         Route::get('/claims/{claim}/photos/{index}', [AdminClaimController::class, 'photo'])->whereNumber('index')->name('claims.photo');
+        Route::get('/claims/{claim}/model-photo', [AdminClaimController::class, 'modelPhoto'])->name('claims.model-photo');
         Route::resource('claims', AdminClaimController::class)->only(['index', 'show', 'update', 'destroy']);
         Route::get('/payments/report', [AdminPaymentController::class, 'report'])->name('payments.report');
         Route::resource('payments', AdminPaymentController::class)->only(['index', 'show']);

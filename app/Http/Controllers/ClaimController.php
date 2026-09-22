@@ -91,16 +91,23 @@ class ClaimController extends Controller
             throw ValidationException::withMessages(['panels' => 'Select valid vehicle panels.']);
         }
         $panelDetails = $model
-            ? $model->panels->whereIn('key', $validated['panels'])->map(fn ($panel) => ['key' => $panel->key, 'name' => $panel->name, 'min_sqm' => $panel->min_sqm, 'max_sqm' => $panel->max_sqm])->values()->all()
+            ? $model->panels->whereIn('key', $validated['panels'])->map(fn ($panel) => ['key' => $panel->key, 'name' => $panel->name, 'min_sqm' => $panel->min_sqm, 'max_sqm' => $panel->max_sqm, 'photo_polygon' => $panel->photo_polygon])->values()->all()
             : collect($validated['panels'])->map(fn ($key) => ['key' => $key, 'name' => Claim::PANELS[$key], 'min_sqm' => null, 'max_sqm' => null])->all();
 
         $paths = [];
+        $modelPhotoPath = null;
         try {
+            if ($model?->photo_path && Storage::disk('public')->exists($model->photo_path)) {
+                $modelPhotoPath = 'claims/model-photos/'.Str::uuid().'.'.pathinfo($model->photo_path, PATHINFO_EXTENSION);
+                if (! Storage::disk('public')->copy($model->photo_path, $modelPhotoPath)) {
+                    throw new \RuntimeException('The vehicle model photo could not be saved with the claim.');
+                }
+            }
             foreach ($request->file('photos') as $photo) {
                 $paths[] = $photo->store('claims/'.$request->user()->id, 'public');
             }
 
-            $claim = DB::transaction(function () use ($validated, $request, $subscription, $paths, $codes, $model, $panelDetails): Claim {
+            $claim = DB::transaction(function () use ($validated, $request, $subscription, $paths, $codes, $model, $modelPhotoPath, $panelDetails): Claim {
                 $warrantyCode = WarrantyCode::withTrashed()->where('code', $validated['warranty_code'])->lockForUpdate()->first();
                 if (! $warrantyCode || $warrantyCode->trashed()) {
                     throw ValidationException::withMessages(['warranty_code' => 'This warranty code is invalid or has been deleted.']);
@@ -117,6 +124,7 @@ class ClaimController extends Controller
                     'subscription_id' => $subscription->id, 'warranty_code_id' => $warrantyCode->id,
                     'vehicle_make' => $model?->make->name ?? $validated['vehicle_make'], 'vehicle_model' => $model?->name ?? $validated['vehicle_model'],
                     'vehicle_model_id' => $model?->id,
+                    'vehicle_model_photo_path' => $modelPhotoPath,
                     'registration_number' => strtoupper($validated['registration_number']),
                     'vehicle_year' => $validated['vehicle_year'] ?? null,
                     'panels' => array_values(array_unique($validated['panels'])), 'panel_details' => $panelDetails, 'photos' => $paths,
@@ -129,6 +137,7 @@ class ClaimController extends Controller
             });
         } catch (\Throwable $exception) {
             Storage::disk('public')->delete($paths);
+            if ($modelPhotoPath) Storage::disk('public')->delete($modelPhotoPath);
             throw $exception;
         }
 

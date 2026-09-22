@@ -19,7 +19,7 @@ class Claim extends Model
         'other' => 'Other',
     ];
 
-    protected $fillable = ['claim_number', 'user_id', 'subscription_id', 'warranty_code_id', 'vehicle_make', 'vehicle_model', 'vehicle_model_id', 'registration_number', 'vehicle_year', 'panels', 'panel_details', 'photos', 'description', 'status', 'admin_notes', 'reviewed_at', 'booking_date'];
+    protected $fillable = ['claim_number', 'user_id', 'subscription_id', 'warranty_code_id', 'vehicle_make', 'vehicle_model', 'vehicle_model_id', 'vehicle_model_photo_path', 'registration_number', 'vehicle_year', 'panels', 'panel_details', 'photos', 'description', 'status', 'admin_notes', 'reviewed_at', 'booking_date'];
 
     protected function casts(): array
     {
@@ -39,5 +39,10 @@ class Claim extends Model
     public function warrantyCode(): BelongsTo
     {
         return $this->belongsTo(WarrantyCode::class)->withTrashed();
+    }
+
+    public function vehicleModel(): BelongsTo
+    {
+        return $this->belongsTo(VehicleModel::class);
     }
 }

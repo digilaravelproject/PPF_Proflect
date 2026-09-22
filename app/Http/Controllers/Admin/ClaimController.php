@@ -24,7 +24,20 @@ class ClaimController extends Controller
 
     public function show(Claim $claim): View
     {
-        return view('admin.claims.show', ['claim' => $claim->load(['user', 'subscription.plan', 'warrantyCode']), 'panels' => Claim::PANELS]);
+        $claim->load(['user', 'subscription.plan', 'warrantyCode', 'vehicleModel.panels']);
+        $snapshot = $claim->vehicle_model_photo_path && Storage::disk('public')->exists($claim->vehicle_model_photo_path);
+        $currentPhoto = $claim->vehicleModel?->photo_path && Storage::disk('public')->exists($claim->vehicleModel->photo_path);
+        $photoUrl = $snapshot ? route('admin.claims.model-photo', $claim)
+            : ($currentPhoto ? route('catalog.models.photo', $claim->vehicleModel) : null);
+        $selectedAreas = collect($claim->panels)->map(function ($key) use ($claim) {
+            $detail = collect($claim->panel_details ?? [])->firstWhere('key', $key);
+            $polygon = $detail['photo_polygon'] ?? (! $claim->vehicle_model_photo_path
+                ? $claim->vehicleModel?->panels->firstWhere('key', $key)?->photo_polygon : null);
+            return is_array($polygon) && count($polygon) === 4 ? ['name' => $detail['name'] ?? $key, 'points' => $polygon] : null;
+        })->filter()->values();
+
+        return view('admin.claims.show', ['claim' => $claim, 'panels' => Claim::PANELS,
+            'vehiclePhotoUrl' => $photoUrl, 'selectedAreas' => $selectedAreas]);
     }
 
     public function update(Request $request, Claim $claim, CustomerNotificationService $notifications): RedirectResponse
@@ -42,7 +55,7 @@ class ClaimController extends Controller
 
     public function destroy(Claim $claim): RedirectResponse
     {
-        Storage::disk('public')->delete($claim->photos ?? []);
+        Storage::disk('public')->delete(array_filter(array_merge($claim->photos ?? [], [$claim->vehicle_model_photo_path])));
         $claim->delete();
 
         return redirect()->route('admin.claims.index')->with('status', 'Claim deleted.');
@@ -53,6 +66,13 @@ class ClaimController extends Controller
         abort_unless(isset($claim->photos[$index]), 404);
 
         return Storage::disk('public')->response($claim->photos[$index]);
+    }
+
+    public function modelPhoto(Claim $claim): StreamedResponse
+    {
+        abort_unless($claim->vehicle_model_photo_path && Storage::disk('public')->exists($claim->vehicle_model_photo_path), 404);
+
+        return Storage::disk('public')->response($claim->vehicle_model_photo_path);
     }
 
     public function report(Request $request): Response

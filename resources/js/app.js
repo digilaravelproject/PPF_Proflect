@@ -1,5 +1,22 @@
 import './bootstrap';
 
+const svgElement = (name) => document.createElementNS('http://www.w3.org/2000/svg', name);
+const validPanelArea = (points) => Array.isArray(points) && points.length === 4 && points.every((point) =>
+    point && typeof point === 'object' && Number.isFinite(Number(point.x)) && Number.isFinite(Number(point.y))
+    && Number(point.x) >= 0 && Number(point.x) <= 100 && Number(point.y) >= 0 && Number(point.y) <= 100);
+const areaPoints = (points) => points.map((point) => `${Number(point.x)},${Number(point.y)}`).join(' ');
+const simplePanelArea = (points) => {
+    if (!validPanelArea(points)) return false;
+    const cross = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+    const intersects = (a, b, c, d) => cross(a, b, c) * cross(a, b, d) < 0 && cross(c, d, a) * cross(c, d, b) < 0;
+    const twiceArea = points.reduce((sum, point, index) => {
+        const next = points[(index + 1) % 4];
+        return sum + point.x * next.y - next.x * point.y;
+    }, 0);
+    return Math.abs(twiceArea) >= 1 && !intersects(points[0], points[1], points[2], points[3])
+        && !intersects(points[1], points[2], points[3], points[0]);
+};
+
 document.querySelectorAll('[data-landing-nav-toggle]').forEach((button) => {
     button.addEventListener('click', () => {
         const open = document.body.classList.toggle('landing-nav-open');
@@ -212,7 +229,7 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
         stage.hidden = true;
         img.removeAttribute('src');
         img.alt = '';
-        modelPhoto.querySelector('[data-model-hotspots]').replaceChildren();
+        modelPhoto.querySelector('[data-model-areas]').replaceChildren();
         modelPhoto.querySelector('.model-photo__pending').hidden = false;
         modelPhoto.querySelector('small').textContent = 'Select a model to see its photo.';
     };
@@ -250,27 +267,32 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
             modelPhoto.querySelector('.model-photo__pending').hidden = Boolean(model.photo_url);
             modelPhoto.querySelector('small').textContent = model.photo_url
                 ? `${model.make_name} ${model.name}` : 'Model photo pending';
-            const hotspots = modelPhoto.querySelector('[data-model-hotspots]');
-            hotspots.replaceChildren();
+            const areas = modelPhoto.querySelector('[data-model-areas]');
+            areas.replaceChildren();
             if (model.photo_url) model.panels.forEach((panel) => {
-                if (panel.photo_x === null || panel.photo_y === null) return;
-                const spot = document.createElement('button');
-                spot.type = 'button'; spot.className = 'model-panel-spot';
-                spot.dataset.panelKey = panel.key;
-                spot.style.left = `${Number(panel.photo_x)}%`;
-                spot.style.top = `${Number(panel.photo_y)}%`;
-                spot.setAttribute('aria-label', `Select ${panel.name}`);
-                spot.title = panel.name;
-                spot.addEventListener('click', () => {
+                if (!validPanelArea(panel.photo_polygon)) return;
+                const area = svgElement('polygon');
+                area.setAttribute('points', areaPoints(panel.photo_polygon));
+                area.setAttribute('class', 'model-panel-area');
+                area.setAttribute('role', 'button');
+                area.setAttribute('tabindex', '0');
+                area.setAttribute('aria-label', `Select ${panel.name}`);
+                area.dataset.panelKey = panel.key;
+                const toggle = () => {
                     const input = panelInputs.find((item) => item.value === panel.key);
                     if (input) { input.checked = !input.checked; syncPanels(); }
+                };
+                area.addEventListener('click', toggle);
+                area.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggle(); }
                 });
-                hotspots.append(spot);
+                const title = svgElement('title'); title.textContent = panel.name; area.append(title);
+                areas.append(area);
             });
             if (model.photo_url) {
-                modelPhoto.querySelector('small').textContent = hotspots.childElementCount
-                    ? `${model.make_name} ${model.name} · tap a marked area or use the checklist`
-                    : `${model.make_name} ${model.name} · use the checklist (photo spots not mapped yet)`;
+                modelPhoto.querySelector('small').textContent = areas.childElementCount
+                    ? `${model.make_name} ${model.name} · tap a panel area or use the checklist`
+                    : `${model.make_name} ${model.name} · use the checklist (photo areas not mapped yet)`;
             }
             syncPanels();
         } catch (error) {
@@ -394,12 +416,12 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
 
     const syncPanels = () => {
         panelInputs.forEach((input) => wizard.querySelector(`[data-panel-shape="${input.value}"]`)?.classList.toggle('selected', input.checked));
-        modelPhoto.querySelectorAll('[data-panel-key]').forEach((spot) => {
-            const selected = panelInputs.find((input) => input.value === spot.dataset.panelKey)?.checked || false;
-            spot.classList.toggle('selected', selected);
-            spot.setAttribute('aria-pressed', String(selected));
-            const name = spot.title;
-            spot.setAttribute('aria-label', `${selected ? 'Deselect' : 'Select'} ${name}`);
+        modelPhoto.querySelectorAll('[data-panel-key]').forEach((area) => {
+            const selected = panelInputs.find((input) => input.value === area.dataset.panelKey)?.checked || false;
+            area.classList.toggle('selected', selected);
+            area.setAttribute('aria-pressed', String(selected));
+            const name = area.querySelector('title')?.textContent || 'panel';
+            area.setAttribute('aria-label', `${selected ? 'Deselect' : 'Select'} ${name}`);
         });
     };
 
@@ -504,28 +526,68 @@ document.querySelectorAll('[data-catalog-panels]').forEach((container) => {
     const preview = photo.querySelector('[data-photo-preview]');
     const stage = photo.querySelector('[data-photo-stage]');
     const previewImage = stage.querySelector('img');
-    const markers = stage.querySelector('[data-photo-markers]');
+    const areas = stage.querySelector('[data-photo-areas]');
+    const instruction = photo.querySelector('[data-photo-instruction]');
     const removePhoto = photo.querySelector('[data-remove-photo]');
     const removalNote = photo.querySelector('[data-photo-removal-note]');
+    const undoPoint = photo.querySelector('[data-undo-photo-point]');
     let activeRow = null;
+    let draftPoints = [];
+    let drawingError = '';
     let previewUrl = null;
-    const drawMarkers = () => {
-        markers.replaceChildren();
+    let dragging = null;
+    const pointAt = (event) => {
+        const rect = previewImage.getBoundingClientRect();
+        if (!rect.width || !rect.height) return null;
+        return {
+            x: Number((Math.max(0, Math.min(100, (event.clientX - rect.left) / rect.width * 100))).toFixed(2)),
+            y: Number((Math.max(0, Math.min(100, (event.clientY - rect.top) / rect.height * 100))).toFixed(2)),
+        };
+    };
+    const syncOverlay = () => {
+        const image = previewImage.getBoundingClientRect();
+        const parent = stage.getBoundingClientRect();
+        areas.style.left = `${image.left - parent.left}px`;
+        areas.style.top = `${image.top - parent.top}px`;
+        areas.style.width = `${image.width}px`;
+        areas.style.height = `${image.height}px`;
+    };
+    previewImage.addEventListener('load', syncOverlay);
+    new ResizeObserver(syncOverlay).observe(previewImage);
+    const drawAreas = () => {
+        areas.replaceChildren();
         container.querySelectorAll('[data-catalog-panel-row]').forEach((row) => {
-            const x = row.querySelector('[data-photo-x]').value;
-            const y = row.querySelector('[data-photo-y]').value;
-            const button = row.querySelector('[data-set-panel-spot]');
-            button.classList.toggle('is-mapped', x !== '' && y !== '');
+            let points = null;
+            try { points = JSON.parse(row.querySelector('[data-photo-polygon]').value); } catch (_) { /* Unmapped panel. */ }
+            const button = row.querySelector('[data-draw-panel-area]');
+            button.classList.toggle('is-mapped', validPanelArea(points));
             button.classList.toggle('is-setting', row === activeRow);
-            button.textContent = row === activeRow ? 'Click photo…' : (x !== '' && y !== '' ? 'Move spot' : 'Set spot');
-            if (x === '' || y === '') return;
-            const dot = document.createElement('span');
-            dot.className = 'catalog-photo-marker';
-            dot.style.left = `${Number(x)}%`; dot.style.top = `${Number(y)}%`;
-            dot.title = row.querySelector('input[name$="[name]"]').value;
-            markers.append(dot);
+            button.textContent = row === activeRow ? `Corner ${draftPoints.length + 1} of 4` : (validPanelArea(points) ? 'Redraw area' : 'Draw area');
+            if (!validPanelArea(points) || row === activeRow) return;
+            const polygon = svgElement('polygon');
+            polygon.setAttribute('points', areaPoints(points));
+            polygon.setAttribute('class', 'catalog-photo-area');
+            polygon.panelRow = row;
+            const title = svgElement('title'); title.textContent = row.querySelector('input[name$="[name]"]').value;
+            polygon.append(title); areas.append(polygon);
         });
+        if (activeRow && draftPoints.length) {
+            const line = svgElement('polyline');
+            line.setAttribute('points', areaPoints(draftPoints));
+            line.setAttribute('class', 'catalog-photo-draft'); areas.append(line);
+            draftPoints.forEach((point, index) => {
+                const dot = svgElement('circle');
+                dot.setAttribute('cx', point.x); dot.setAttribute('cy', point.y); dot.setAttribute('r', '1.25');
+                dot.setAttribute('class', 'catalog-photo-corner');
+                const title = svgElement('title'); title.textContent = `Corner ${index + 1}`; dot.append(title); areas.append(dot);
+            });
+        }
         stage.classList.toggle('is-setting', Boolean(activeRow));
+        instruction.textContent = drawingError || (activeRow
+            ? `Draw ${activeRow.querySelector('input[name$="[name]"]').value}: click corner ${draftPoints.length + 1} of 4, moving around the panel edge.`
+            : 'Choose “Draw area” beside a panel, then click four corners on the photo. Drag a finished area to move it.');
+        undoPoint.hidden = !activeRow || !draftPoints.length;
+        syncOverlay();
     };
     photoInput.addEventListener('change', () => {
         if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -536,22 +598,70 @@ document.querySelectorAll('[data-catalog-panels]').forEach((container) => {
         preview.hidden = false;
         removePhoto.value = '0';
         removalNote.hidden = true;
-        drawMarkers();
+        drawAreas();
     });
     photo.querySelector('[data-remove-model-photo]').addEventListener('click', () => {
         photoInput.value = '';
         if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
         previewImage.removeAttribute('src'); preview.hidden = true;
         removePhoto.value = '1'; removalNote.hidden = false;
-        activeRow = null; drawMarkers();
+        activeRow = null; draftPoints = []; drawingError = ''; drawAreas();
     });
-    stage.addEventListener('click', (event) => {
+    stage.addEventListener('pointerdown', (event) => {
+        if (event.button !== 0 || preview.hidden) return;
+        const polygon = event.target.closest?.('.catalog-photo-area');
+        if (!activeRow && polygon?.panelRow) {
+            const points = JSON.parse(polygon.panelRow.querySelector('[data-photo-polygon]').value);
+            dragging = { row: polygon.panelRow, points, start: pointAt(event), pointerId: event.pointerId };
+            stage.setPointerCapture(event.pointerId);
+            stage.classList.add('is-dragging');
+            event.preventDefault();
+            return;
+        }
         if (!activeRow) return;
-        const rect = previewImage.getBoundingClientRect();
-        if (!rect.width || !rect.height) return;
-        activeRow.querySelector('[data-photo-x]').value = (Math.max(0, Math.min(100, (event.clientX - rect.left) / rect.width * 100))).toFixed(2);
-        activeRow.querySelector('[data-photo-y]').value = (Math.max(0, Math.min(100, (event.clientY - rect.top) / rect.height * 100))).toFixed(2);
-        activeRow = null; drawMarkers();
+        const imageRect = previewImage.getBoundingClientRect();
+        if (event.clientX < imageRect.left || event.clientX > imageRect.right || event.clientY < imageRect.top || event.clientY > imageRect.bottom) return;
+        const point = pointAt(event);
+        if (!point) return;
+        drawingError = '';
+        draftPoints.push(point);
+        if (draftPoints.length === 4) {
+            if (simplePanelArea(draftPoints)) {
+                activeRow.querySelector('[data-photo-polygon]').value = JSON.stringify(draftPoints);
+                activeRow = null; draftPoints = [];
+            } else {
+                draftPoints = [];
+                drawingError = 'Corners must go around the panel edge in order. Try the four corners again.';
+            }
+        }
+        drawAreas();
+    });
+    stage.addEventListener('pointermove', (event) => {
+        if (!dragging || dragging.pointerId !== event.pointerId) return;
+        const current = pointAt(event);
+        if (!current || !dragging.start) return;
+        const minX = Math.min(...dragging.points.map((point) => point.x));
+        const maxX = Math.max(...dragging.points.map((point) => point.x));
+        const minY = Math.min(...dragging.points.map((point) => point.y));
+        const maxY = Math.max(...dragging.points.map((point) => point.y));
+        const dx = Math.max(-minX, Math.min(100 - maxX, current.x - dragging.start.x));
+        const dy = Math.max(-minY, Math.min(100 - maxY, current.y - dragging.start.y));
+        dragging.row.querySelector('[data-photo-polygon]').value = JSON.stringify(dragging.points.map((point) => ({
+            x: Number((point.x + dx).toFixed(2)), y: Number((point.y + dy).toFixed(2)),
+        })));
+        drawAreas();
+    });
+    const stopDragging = (event) => {
+        if (!dragging || dragging.pointerId !== event.pointerId) return;
+        dragging = null;
+        stage.classList.remove('is-dragging');
+        if (stage.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId);
+    };
+    stage.addEventListener('pointerup', stopDragging);
+    stage.addEventListener('pointercancel', stopDragging);
+    undoPoint.addEventListener('click', () => {
+        if (!activeRow || !draftPoints.length) return;
+        draftPoints.pop(); drawingError = ''; drawAreas();
     });
     form.querySelector('[data-add-panel]')?.addEventListener('click', () => {
         const index = Number(container.dataset.nextIndex || 0);
@@ -568,22 +678,22 @@ document.querySelectorAll('[data-catalog-panels]').forEach((container) => {
             control.append(input); field.append(label, control); row.append(field);
         });
         const position = document.createElement('div'); position.className = 'catalog-panel-position';
-        ['photo_x', 'photo_y'].forEach((key) => { const input = document.createElement('input'); input.type = 'hidden'; input.name = `panels[${index}][${key}]`; input.dataset[key === 'photo_x' ? 'photoX' : 'photoY'] = ''; position.append(input); });
-        const setSpot = document.createElement('button'); setSpot.type = 'button'; setSpot.dataset.setPanelSpot = ''; setSpot.textContent = 'Set spot'; position.append(setSpot);
-        const clearSpot = document.createElement('button'); clearSpot.type = 'button'; clearSpot.dataset.clearPanelSpot = ''; clearSpot.textContent = '×'; clearSpot.title = 'Clear panel spot'; clearSpot.setAttribute('aria-label', 'Clear panel spot'); position.append(clearSpot); row.append(position);
+        const polygon = document.createElement('input'); polygon.type = 'hidden'; polygon.name = `panels[${index}][photo_polygon]`; polygon.dataset.photoPolygon = ''; position.append(polygon);
+        const drawArea = document.createElement('button'); drawArea.type = 'button'; drawArea.dataset.drawPanelArea = ''; drawArea.textContent = 'Draw area'; position.append(drawArea);
+        const clearArea = document.createElement('button'); clearArea.type = 'button'; clearArea.dataset.clearPanelArea = ''; clearArea.textContent = '×'; clearArea.title = 'Clear panel area'; clearArea.setAttribute('aria-label', 'Clear panel area'); position.append(clearArea); row.append(position);
         const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'icon-action icon-action--danger'; remove.dataset.removePanel = ''; remove.textContent = '×'; remove.setAttribute('aria-label', 'Remove panel'); row.append(remove);
         container.append(row); row.querySelector('input')?.focus();
     });
     container.addEventListener('click', (event) => {
         const row = event.target.closest('[data-catalog-panel-row]');
         if (!row) return;
-        if (event.target.closest('[data-remove-panel]')) { if (activeRow === row) activeRow = null; row.remove(); drawMarkers(); }
-        if (event.target.closest('[data-clear-panel-spot]')) { row.querySelector('[data-photo-x]').value = ''; row.querySelector('[data-photo-y]').value = ''; if (activeRow === row) activeRow = null; drawMarkers(); }
-        if (event.target.closest('[data-set-panel-spot]')) {
+        if (event.target.closest('[data-remove-panel]')) { if (activeRow === row) { activeRow = null; draftPoints = []; } row.remove(); drawingError = ''; drawAreas(); }
+        if (event.target.closest('[data-clear-panel-area]')) { row.querySelector('[data-photo-polygon]').value = ''; if (activeRow === row) { activeRow = null; draftPoints = []; } drawingError = ''; drawAreas(); }
+        if (event.target.closest('[data-draw-panel-area]')) {
             if (preview.hidden) { photoInput.focus(); return; }
-            activeRow = activeRow === row ? null : row; drawMarkers();
+            activeRow = activeRow === row ? null : row; draftPoints = []; drawingError = ''; drawAreas();
             if (activeRow) preview.scrollIntoView({behavior: 'smooth', block: 'center'});
         }
     });
-    drawMarkers();
+    drawAreas();
 });

@@ -112,8 +112,7 @@ class VehicleModelController extends Controller
             'panels.*.name' => ['required', 'string', 'max:100'],
             'panels.*.min_sqm' => ['required', 'numeric', 'min:0', 'max:999999'],
             'panels.*.max_sqm' => ['required', 'numeric', 'gte:panels.*.min_sqm', 'max:999999'],
-            'panels.*.photo_x' => ['nullable', 'required_with:panels.*.photo_y', 'numeric', 'between:0,100'],
-            'panels.*.photo_y' => ['nullable', 'required_with:panels.*.photo_x', 'numeric', 'between:0,100'],
+            'panels.*.photo_polygon' => ['nullable', 'string', 'max:500'],
         ]);
     }
 
@@ -126,10 +125,34 @@ class VehicleModelController extends Controller
                 throw ValidationException::withMessages(['panels' => 'Panel names must be unique.']);
             }
             $keys[] = $key;
-            $x = $panel['photo_x'] ?? null;
-            $y = $panel['photo_y'] ?? null;
-            $model->panels()->create(['key' => $key, 'name' => $panel['name'], 'min_sqm' => $panel['min_sqm'], 'max_sqm' => $panel['max_sqm'], 'photo_x' => $x !== '' && $y !== '' ? $x : null, 'photo_y' => $x !== '' && $y !== '' ? $y : null]);
+            $polygon = $this->parsePolygon($panel['photo_polygon'] ?? null);
+            $model->panels()->create(['key' => $key, 'name' => $panel['name'], 'min_sqm' => $panel['min_sqm'], 'max_sqm' => $panel['max_sqm'], 'photo_polygon' => $polygon]);
         }
+    }
+
+    private function parsePolygon(?string $value): ?array
+    {
+        if ($value === null || $value === '') return null;
+        $points = json_decode($value, true);
+        if (! is_array($points) || count($points) !== 4) {
+            throw ValidationException::withMessages(['panels' => 'Mark exactly four corners for each photo area.']);
+        }
+        foreach ($points as $point) {
+            if (! is_array($point) || ! isset($point['x'], $point['y']) || ! is_numeric($point['x']) || ! is_numeric($point['y'])
+                || $point['x'] < 0 || $point['x'] > 100 || $point['y'] < 0 || $point['y'] > 100) {
+                throw ValidationException::withMessages(['panels' => 'Photo area corners must lie within the photo.']);
+            }
+        }
+        $cross = fn ($a, $b, $c) => ($b['x'] - $a['x']) * ($c['y'] - $a['y']) - ($b['y'] - $a['y']) * ($c['x'] - $a['x']);
+        $area = 0;
+        for ($i = 0; $i < 4; $i++) $area += $points[$i]['x'] * $points[($i + 1) % 4]['y'] - $points[($i + 1) % 4]['x'] * $points[$i]['y'];
+        $intersects = fn ($a, $b, $c, $d) => $cross($a, $b, $c) * $cross($a, $b, $d) < 0
+            && $cross($c, $d, $a) * $cross($c, $d, $b) < 0;
+        if (abs($area) < 1 || $intersects($points[0], $points[1], $points[2], $points[3])
+            || $intersects($points[1], $points[2], $points[3], $points[0])) {
+            throw ValidationException::withMessages(['panels' => 'Click the four corners around the panel in order to form one area.']);
+        }
+        return array_map(fn ($point) => ['x' => round((float) $point['x'], 2), 'y' => round((float) $point['y'], 2)], $points);
     }
 
     private function assertParent(VehicleMake $vehicle, VehicleModel $model): void
