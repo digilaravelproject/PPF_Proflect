@@ -91,8 +91,11 @@ body{background:#f7f5f0}
 .catalog-photo-stage>svg{pointer-events:none;touch-action:none}
 .catalog-photo-area{fill:rgba(219,163,66,.25);stroke:#ad6a12;stroke-width:.55;vector-effect:non-scaling-stroke;pointer-events:visiblePainted;cursor:grab}
 .catalog-photo-area:hover{fill:rgba(219,163,66,.4);stroke:#8f5309}
-.catalog-photo-area.is-selected{fill:rgba(219,163,66,.35);stroke:#7d4403;stroke-width:2}
-.catalog-photo-handle{fill:#fff;stroke:#9d5709;stroke-width:2;vector-effect:non-scaling-stroke;pointer-events:all;cursor:move}
+.catalog-photo-area.is-selected{fill:rgba(219,163,66,.38);stroke:#7d4403;stroke-width:2}
+.catalog-photo-area-label{font-size:3.5px;font-weight:700;fill:#fff;stroke:#4a2700;stroke-width:0.65px;paint-order:stroke fill;stroke-linejoin:round;pointer-events:none;user-select:none}
+.catalog-photo-area-label.is-selected{fill:#fff;stroke:#2d1700}
+.catalog-photo-handle{fill:#fff;stroke:#9d5709;stroke-width:2;vector-effect:non-scaling-stroke;pointer-events:all;cursor:pointer}
+.catalog-photo-handle:hover{fill:#dba342;r:3.2}
 .catalog-photo-stage.is-dragging,.catalog-photo-stage.is-dragging .catalog-photo-area{cursor:grabbing}
 .catalog-photo-stage.is-setting.is-dragging{cursor:crosshair}
 .catalog-photo-draft{fill:rgba(219,163,66,.28);stroke:#ed9b27;stroke-width:2;stroke-dasharray:5 4;vector-effect:non-scaling-stroke;pointer-events:none}
