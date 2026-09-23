@@ -12,15 +12,9 @@
                 <p class="catalog-help">Upload a verified photo for this model in Edit model.</p>
             @endif
         </div>
-        <div><h3>Available panels</h3><div class="catalog-panel-list">
+        <div><h3>Available panels</h3><p class="catalog-help">Model area limit: {{ number_format($model->coverage_sqm, 2) }} m² (all selected panels combined)</p><div class="catalog-panel-list">
             @foreach($model->panels as $panel)
-                <div><b>{{ $panel->name }}</b>
-                    @if($panel->min_sqm === null || $panel->max_sqm === null)
-                        <span>Area range pending</span>
-                    @else
-                        <span>min {{ number_format($panel->min_sqm, 2) }} m² · max {{ number_format($panel->max_sqm, 2) }} m²</span>
-                    @endif
-                </div>
+                <div><b>{{ $panel->name }}</b></div>
             @endforeach
         </div></div>
     </section>

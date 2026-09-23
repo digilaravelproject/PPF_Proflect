@@ -8,6 +8,7 @@ use App\Models\Plan;
 use App\Models\Subscription;
 use App\Services\CustomerNotificationService;
 use App\Services\RazorpayService;
+use App\Services\WarrantyCodeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -35,7 +36,7 @@ class PaymentController extends Controller
         }
     }
 
-    public function verify(Request $request, RazorpayService $razorpay, CustomerNotificationService $notifications): JsonResponse
+    public function verify(Request $request, RazorpayService $razorpay, CustomerNotificationService $notifications, WarrantyCodeService $codes): JsonResponse
     {
         $attributes = $request->validate([
             'razorpay_payment_id' => ['required', 'string'], 'razorpay_order_id' => ['required', 'string'], 'razorpay_signature' => ['required', 'string'],
@@ -64,11 +65,19 @@ class PaymentController extends Controller
 
         $paidPayment = $payment->fresh(['plan', 'user']);
         $subscription = Subscription::query()->where('payment_id', $payment->id)->firstOrFail();
+        $code = null;
+        try {
+            $code = $codes->issueForSubscription($subscription);
+        } catch (Throwable $exception) {
+            report($exception);
+        }
         if ($notifications->paymentSuccessful($paidPayment, $subscription)) {
-            try {
-                Mail::to($request->user())->send(new PaymentSuccessfulMail($paidPayment));
-            } catch (Throwable $exception) {
-                report($exception);
+            if ($code) {
+                try {
+                    Mail::to($request->user())->send(new PaymentSuccessfulMail($paidPayment, $code));
+                } catch (Throwable $exception) {
+                    report($exception);
+                }
             }
         }
 

@@ -32,7 +32,7 @@
             <article><b>02</b><h3>Keep everything together</h3><p>Access your warranty, documents and allowance from one secure portal.</p></article>
             <article><b>03</b><h3>Claim with confidence</h3><p>Select damaged panels, upload evidence and follow every status update.</p></article>
         </section>
-        <section class="landing-support" id="support"><div><span class="eyebrow">NEED A HAND?</span><h2>We’re here when protection matters.</h2></div><a class="button button--dark" href="mailto:support@proflect.com">Contact support <span>→</span></a></section>
+        <section class="landing-support" id="support"><div><span class="eyebrow">NEED A HAND?</span><h2>We’re here when protection matters.</h2></div><a class="button button--dark" href="mailto:contact@proflect.com.au">Contact support <span>→</span></a></section>
     </main>
 </body>
 </html>

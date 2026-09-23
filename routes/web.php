@@ -67,6 +67,7 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware(['onboarded', 'subscription.active'])->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'overview'])->name('dashboard');
+        Route::post('/warranty-code/email', [DashboardController::class, 'emailWarrantyCode'])->middleware('throttle:3,1')->name('warranty-code.email');
         Route::get('/my-vehicles', [DashboardController::class, 'vehicles'])->name('vehicles.index');
         Route::get('/my-warranty', [DashboardController::class, 'warranty'])->name('warranty.show');
         Route::get('/claims', [ClaimController::class, 'index'])->name('claims.index');

@@ -2,13 +2,33 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\WarrantyCodeService;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Throwable;
 
 class DashboardController extends Controller
 {
     public function overview(): View
     {
         return view('dashboard', ['subscription' => $this->activeSubscription()]);
+    }
+
+    public function emailWarrantyCode(Request $request, WarrantyCodeService $codes): RedirectResponse
+    {
+        $subscription = $this->activeSubscription();
+        abort_unless($subscription && $subscription->user_id === $request->user()->id, 404);
+
+        try {
+            $codes->emailForSubscription($subscription->load(['user', 'plan']));
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return back()->withErrors(['warranty_code' => 'Your code could not be emailed. Please try again or contact contact@proflect.com.au.']);
+        }
+
+        return back()->with('status', 'Your available warranty code has been sent to your email.');
     }
 
     public function warranty(): View

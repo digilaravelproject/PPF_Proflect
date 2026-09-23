@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class Claim extends Model
 {
@@ -19,11 +20,16 @@ class Claim extends Model
         'other' => 'Other',
     ];
 
-    protected $fillable = ['claim_number', 'user_id', 'subscription_id', 'warranty_code_id', 'vehicle_make', 'vehicle_model', 'vehicle_model_id', 'vehicle_model_photo_path', 'registration_number', 'vehicle_year', 'panels', 'panel_details', 'photos', 'description', 'status', 'admin_notes', 'reviewed_at', 'booking_date'];
+    protected $fillable = ['claim_number', 'user_id', 'subscription_id', 'warranty_code_id', 'vehicle_make', 'vehicle_model', 'vehicle_model_id', 'vehicle_model_photo_path', 'registration_number', 'vehicle_year', 'panels', 'panel_details', 'model_coverage_sqm', 'photos', 'description', 'status', 'admin_notes', 'reviewed_at', 'booking_date', 'available_date'];
 
     protected function casts(): array
     {
-        return ['panels' => 'array', 'panel_details' => 'array', 'photos' => 'array', 'reviewed_at' => 'datetime', 'booking_date' => 'date'];
+        return ['panels' => 'array', 'panel_details' => 'array', 'photos' => 'array', 'reviewed_at' => 'datetime', 'booking_date' => 'date', 'available_date' => 'date', 'model_coverage_sqm' => 'decimal:2'];
+    }
+
+    public function isVideoEvidence(int $index): bool
+    {
+        return isset($this->photos[$index]) && Str::endsWith(strtolower($this->photos[$index]), ['.mp4', '.mov', '.webm', '.qt']);
     }
 
     public function user(): BelongsTo

@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Services\CustomerNotificationService;
+use App\Services\WarrantyCodeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -40,7 +41,7 @@ class SubscriptionController extends Controller
         return view('subscription.checkout', compact('plan'));
     }
 
-    public function activateFree(Request $request, Plan $plan, CustomerNotificationService $notifications): RedirectResponse
+    public function activateFree(Request $request, Plan $plan, CustomerNotificationService $notifications, WarrantyCodeService $codes): RedirectResponse
     {
         abort_unless($plan->is_active && $plan->is_free && $plan->duration_days, 404);
 
@@ -81,11 +82,19 @@ class SubscriptionController extends Controller
         });
 
         $payment = $subscription->payment()->with(['plan', 'user'])->firstOrFail();
+        $code = null;
+        try {
+            $code = $codes->issueForSubscription($subscription);
+        } catch (Throwable $exception) {
+            report($exception);
+        }
         if ($notifications->paymentSuccessful($payment, $subscription)) {
-            try {
-                Mail::to($request->user())->send(new PaymentSuccessfulMail($payment));
-            } catch (Throwable $exception) {
-                report($exception);
+            if ($code) {
+                try {
+                    Mail::to($request->user())->send(new PaymentSuccessfulMail($payment, $code));
+                } catch (Throwable $exception) {
+                    report($exception);
+                }
             }
         }
 

@@ -20,7 +20,7 @@ class WarrantyCodeAndNotificationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_claim_requires_and_consumes_an_available_warranty_code_then_replenishes_inventory(): void
+    public function test_claim_consumes_a_warranty_code_and_issues_another_to_the_subscription(): void
     {
         Notification::fake();
         Storage::fake('public');
@@ -38,7 +38,7 @@ class WarrantyCodeAndNotificationTest extends TestCase
         $this->assertSame(['roof'], $claim->panels);
         $this->assertNotNull($code->fresh()->used_at);
         $this->assertSame($user->id, $code->fresh()->used_by_user_id);
-        $this->assertDatabaseCount('warranty_codes', 101);
+        $this->assertDatabaseHas('warranty_codes', ['subscription_id' => $claim->subscription_id, 'used_at' => null, 'is_active' => true]);
         Notification::assertSentTo($user, CustomerEventNotification::class, fn ($notification) => $notification->event === 'claim_received');
 
         [$other] = $this->customerWithSubscription();

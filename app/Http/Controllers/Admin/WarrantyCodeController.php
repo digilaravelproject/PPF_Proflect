@@ -22,11 +22,12 @@ class WarrantyCodeController extends Controller
             'to' => ['nullable', 'date', 'after_or_equal:from'],
         ]);
 
-        $codes = WarrantyCode::withTrashed()->with(['usedBy', 'claim'])
+        $codes = WarrantyCode::withTrashed()->with(['usedBy', 'claim', 'subscription.user'])
             ->when($request->filled('search'), function (Builder $query) use ($request): void {
                 $search = trim($request->string('search')->toString());
                 $query->where(fn (Builder $query) => $query->where('code', 'like', "%{$search}%")
-                    ->orWhereHas('usedBy', fn (Builder $query) => $query->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")));
+                    ->orWhereHas('usedBy', fn (Builder $query) => $query->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"))
+                    ->orWhereHas('subscription.user', fn (Builder $query) => $query->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")));
             })
             ->when($request->string('status')->toString() === 'available', fn (Builder $query) => $query->whereNull('deleted_at')->whereNull('used_at')->where('is_active', true))
             ->when($request->string('status')->toString() === 'used', fn (Builder $query) => $query->whereNotNull('used_at')->whereNull('deleted_at'))
@@ -49,7 +50,7 @@ class WarrantyCodeController extends Controller
 
     public function show(int $warrantyCode): View
     {
-        $code = WarrantyCode::withTrashed()->with(['usedBy', 'claim.subscription.plan'])->findOrFail($warrantyCode);
+        $code = WarrantyCode::withTrashed()->with(['usedBy', 'subscription.user', 'subscription.plan', 'claim.subscription.plan'])->findOrFail($warrantyCode);
 
         return view('admin.warranty-codes.show', ['code' => $code]);
     }

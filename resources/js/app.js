@@ -168,6 +168,7 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
     let panelInputs = [];
     const photoInput = wizard.querySelector('[data-photo-input]');
     const description = wizard.querySelector('textarea[name="description"]');
+    const availableDate = wizard.querySelector('[name="available_date"]');
     const vehicleMake = wizard.querySelector('[name="vehicle_make_id"]');
     const vehicleModel = wizard.querySelector('[name="vehicle_model_id"]');
     const panelContainer = wizard.querySelector('[data-model-panels]');
@@ -219,6 +220,7 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
     };
     const renderEmptyModel = () => {
         panelContainer.replaceChildren();
+        wizard.querySelector('[data-model-coverage]').textContent = 'Select a vehicle model to see its area limit.';
         panelInputs = [];
         const note = document.createElement('p');
         note.className = 'catalog-empty-note';
@@ -245,6 +247,8 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
             if (request !== modelRequest) return;
             selectedModelData = model;
             panelContainer.replaceChildren();
+            const limit = wizard.querySelector('[data-model-coverage]');
+            limit.textContent = `Model area limit: ${Number(model.coverage_sqm).toFixed(2)} m² (all selected panels combined).`;
             model.panels.forEach((panel) => {
                 const label = document.createElement('label');
                 const input = document.createElement('input');
@@ -253,10 +257,7 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
                 input.checked = oldPanels.has(panel.key);
                 input.addEventListener('change', syncPanels);
                 const name = document.createElement('span');
-                const range = panel.min_sqm === null || panel.max_sqm === null
-                    ? 'area range pending'
-                    : `min ${Number(panel.min_sqm).toFixed(2)} m², max ${Number(panel.max_sqm).toFixed(2)} m²`;
-                name.textContent = `${panel.name} (${range})`;
+                name.textContent = panel.name;
                 label.append(input, name); panelContainer.append(label); panelInputs.push(input);
             });
             const img = modelPhoto.querySelector('img');
@@ -396,7 +397,25 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
     const validatePhotos = () => {
         const count = photoInput.files?.length || 0;
         if (count < 1 || count > 6) {
-            showWizardError('Choose between 1 and 6 damage photos.', photoInput);
+            showWizardError('Choose between 1 and 6 photos or videos.', photoInput);
+            return false;
+        }
+        if ([...photoInput.files].reduce((total, file) => total + file.size, 0) > 35 * 1024 * 1024) {
+            showWizardError('Keep the combined photos and videos under 35 MB.', photoInput);
+            return false;
+        }
+        for (const file of photoInput.files) {
+            const isImage = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type);
+            const isVideo = ['video/mp4', 'video/quicktime', 'video/webm'].includes(file.type);
+            if ((!isImage && !isVideo) || file.size > (isVideo ? 30 : 5) * 1024 * 1024) {
+                showWizardError('Use JPG, PNG or WebP photos up to 5 MB, or MP4, MOV or WebM videos up to 30 MB.', photoInput);
+                return false;
+            }
+        }
+        const today = new Date();
+        const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        if (availableDate.value && availableDate.value < localToday) {
+            showWizardError('Choose today or a future available date.', availableDate);
             return false;
         }
         clearWizardError();
@@ -433,21 +452,30 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
         }
     }));
 
+    let previewUrls = [];
+    let reviewUrls = [];
+    const mediaPreview = (file, urls) => {
+        const url = URL.createObjectURL(file);
+        urls.push(url);
+        const media = document.createElement(file.type.startsWith('video/') ? 'video' : 'img');
+        media.src = url;
+        if (media.tagName === 'VIDEO') { media.controls = true; media.preload = 'metadata'; }
+        else media.alt = file.name;
+        return media;
+    };
     const renderPhotos = () => {
         const preview = wizard.querySelector('[data-photo-previews]');
-        preview.innerHTML = '';
+        preview.replaceChildren();
+        previewUrls.forEach((url) => URL.revokeObjectURL(url)); previewUrls = [];
         [...(photoInput.files || [])].slice(0, 6).forEach((file, index) => {
             const item = document.createElement('div');
             item.className = 'photo-preview-item';
-            const image = document.createElement('img');
-            image.alt = file.name;
-            image.src = URL.createObjectURL(file);
-            image.onload = () => URL.revokeObjectURL(image.src);
+            const media = mediaPreview(file, previewUrls);
             const remove = document.createElement('button');
             remove.type = 'button';
             remove.className = 'photo-remove';
             remove.setAttribute('aria-label', `Remove ${file.name}`);
-            remove.title = 'Remove photo';
+            remove.title = 'Remove evidence';
             remove.textContent = '×';
             remove.addEventListener('click', () => {
                 const transfer = new DataTransfer();
@@ -457,7 +485,7 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
                 photoInput.files = transfer.files;
                 renderPhotos();
             });
-            item.append(image, remove);
+            item.append(media, remove);
             preview.appendChild(item);
         });
     };
@@ -473,18 +501,17 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
             list.appendChild(item);
         });
         const count = photoInput.files?.length || 0;
-        wizard.querySelector('[data-review-photos]').textContent = `${count} photo${count === 1 ? '' : 's'} ready to submit`;
+        wizard.querySelector('[data-review-photos]').textContent = `${count} file${count === 1 ? '' : 's'} ready to submit`;
+        wizard.querySelector('[data-review-available-date]').textContent = availableDate.value ? `Available on ${availableDate.value}` : 'No available date selected';
+        wizard.querySelector('[data-review-model-limit]').textContent = selectedModelData?.coverage_sqm ? `Model area limit: ${Number(selectedModelData.coverage_sqm).toFixed(2)} m²` : '';
         wizard.querySelector('[data-review-description]').textContent = description.value.trim() || 'No additional details provided.';
         wizard.querySelector('[data-review-vehicle]').textContent = `${selectedMakeName()} ${selectedModelData?.name || selectedModelName()}`.trim();
         wizard.querySelector('[data-review-registration]').textContent = registration.value.trim().toUpperCase();
         const photoStrip = wizard.querySelector('[data-review-photo-strip]');
-        photoStrip.innerHTML = '';
+        photoStrip.replaceChildren();
+        reviewUrls.forEach((url) => URL.revokeObjectURL(url)); reviewUrls = [];
         [...(photoInput.files || [])].forEach((file) => {
-            const image = document.createElement('img');
-            image.alt = file.name;
-            image.src = URL.createObjectURL(file);
-            image.onload = () => URL.revokeObjectURL(image.src);
-            photoStrip.appendChild(image);
+            photoStrip.appendChild(mediaPreview(file, reviewUrls));
         });
     };
 
@@ -769,12 +796,11 @@ document.querySelectorAll('[data-catalog-panels]').forEach((container) => {
         const row = document.createElement('div');
         row.className = 'catalog-panel-row';
         row.dataset.catalogPanelRow = '';
-        [['Panel name', 'name', 'text'], ['Min m²', 'min_sqm', 'number'], ['Max m²', 'max_sqm', 'number']].forEach(([labelText, key, type]) => {
+        [['Panel name', 'name', 'text']].forEach(([labelText, key, type]) => {
             const field = document.createElement('div'); field.className = 'field';
             const label = document.createElement('label'); label.textContent = labelText;
             const control = document.createElement('div'); control.className = 'field__control';
             const input = document.createElement('input'); input.name = `panels[${index}][${key}]`; input.type = type; input.required = true;
-            if (type === 'number') { input.step = '0.01'; input.min = '0'; }
             control.append(input); field.append(label, control); row.append(field);
         });
         const position = document.createElement('div'); position.className = 'catalog-panel-position';

@@ -12,7 +12,7 @@
         <a class="{{ request()->routeIs('vehicles.*')?'active':'' }}" href="{{ route('vehicles.index') }}">My Vehicles</a>
         <a class="{{ request()->routeIs('warranty.show')?'active':'' }}" href="{{ route('warranty.show') }}">My Warranty</a>
         <a class="{{ request()->routeIs('claims.create')?'active':'' }}" href="{{ route('claims.create') }}">Make a Claim</a>
-        <a href="mailto:support@proflect.com">Support</a>
+        <a href="mailto:contact@proflect.com.au">Support</a>
         <a class="{{ request()->routeIs('profile.*')?'active':'' }}" href="{{ route('profile.edit') }}">Profile</a>
         <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit">Logout</button></form>
     </nav>

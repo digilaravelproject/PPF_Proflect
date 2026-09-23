@@ -22,9 +22,9 @@ class VehicleCatalogController extends Controller
         abort_unless($model->is_active && $model->make->is_active, 404);
 
         return response()->json([
-            'id' => $model->id, 'name' => $model->name, 'kind' => $model->kind,
+            'id' => $model->id, 'name' => $model->name, 'kind' => $model->kind, 'coverage_sqm' => $model->coverage_sqm,
             'make_name' => $model->make->name, 'photo_url' => $model->photo_url,
-            'panels' => $model->panels()->orderBy('id')->get(['key', 'name', 'min_sqm', 'max_sqm', 'photo_polygon']),
+            'panels' => $model->panels()->orderBy('id')->get(['key', 'name', 'photo_polygon']),
         ]);
     }
 }

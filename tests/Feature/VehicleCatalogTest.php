@@ -32,7 +32,7 @@ class VehicleCatalogTest extends TestCase
         $this->actingAs($admin, 'admin')->post(route('admin.vehicles.store'), ['name' => 'Toyota', 'is_active' => 1])->assertRedirect();
         $make = VehicleMake::firstOrFail();
         $this->actingAs($admin, 'admin')->post(route('admin.vehicles.models.store', $make), [
-            'name' => 'Fortuner', 'is_active' => 1, 'photo' => UploadedFile::fake()->image('fortuner.jpg'),
+            'name' => 'Fortuner', 'is_active' => 1, 'coverage_sqm' => 4.5, 'photo' => UploadedFile::fake()->image('fortuner.jpg'),
             'panels' => [
                 ['name' => 'Front Bumper', 'min_sqm' => 2, 'max_sqm' => 4, 'photo_polygon' => '[{"x":45,"y":55},{"x":70,"y":55},{"x":68,"y":75},{"x":43,"y":75}]'],
                 ['name' => 'Roof', 'min_sqm' => 1, 'max_sqm' => 3],
@@ -46,9 +46,10 @@ class VehicleCatalogTest extends TestCase
             ->assertSee('aria-label="Deactivate Toyota Fortuner"', false)
             ->assertSee('aria-label="View Fortuner"', false);
         Storage::disk('public')->assertExists($model->photo_path);
-        $this->actingAs($admin, 'admin')->get(route('admin.vehicles.models.show', [$make, $model]))->assertOk()->assertSee('Front Bumper')->assertSee('4.00');
+        $this->actingAs($admin, 'admin')->get(route('admin.vehicles.models.show', [$make, $model]))->assertOk()->assertSee('Front Bumper')->assertSee('4.50');
         $this->actingAs($admin, 'admin')->get(route('admin.vehicles.models.edit', [$make, $model]))->assertOk()
-            ->assertSee('data-photo-preview', false)->assertSee('data-remove-model-photo', false)->assertSee('data-draw-panel-area', false);
+            ->assertSee('data-photo-preview', false)->assertSee('data-remove-model-photo', false)->assertSee('data-draw-panel-area', false)
+            ->assertSee('Model area limit')->assertDontSee('Min m²')->assertDontSee('Max m²');
         $this->get(route('catalog.models.photo', $model))->assertOk();
 
         $user = User::factory()->create(['onboarding_completed_at' => now()]);
@@ -58,6 +59,7 @@ class VehicleCatalogTest extends TestCase
         $this->actingAs($user)->get(route('claims.create'))->assertOk()->assertSee('Toyota');
         $this->actingAs($user)->get(route('catalog.make.models', $make))->assertOk()->assertSee('Fortuner');
         $this->actingAs($user)->get(route('catalog.model.show', $model))->assertOk()->assertSee('Front Bumper')
+            ->assertJsonPath('coverage_sqm', 4.5)
             ->assertJsonPath('panels.0.photo_polygon.0.x', 45)->assertJsonPath('panels.0.photo_polygon.3.y', 75);
         $this->actingAs($user)->post(route('claims.store'), [
             'warranty_code' => $code->code, 'vehicle_make_id' => $make->id, 'vehicle_model_id' => $model->id,
@@ -73,7 +75,7 @@ class VehicleCatalogTest extends TestCase
         $this->assertSame($model->id, $claim->vehicle_model_id);
         $this->assertSame('Toyota', $claim->vehicle_make);
         $this->assertSame('Fortuner', $claim->vehicle_model);
-        $this->assertSame('2', (string) (float) $claim->panel_details[0]['min_sqm']);
+        $this->assertSame('4.50', $claim->model_coverage_sqm);
         $this->assertSame(4, count($claim->panel_details[0]['photo_polygon']));
         $this->assertNotNull($claim->vehicle_model_photo_path);
         Storage::disk('public')->assertExists($claim->vehicle_model_photo_path);
@@ -92,11 +94,11 @@ class VehicleCatalogTest extends TestCase
         $this->actingAs($admin, 'admin')->patch(route('admin.vehicles.models.toggle', [$make, $model]))->assertRedirect();
         $this->actingAs($user)->get(route('catalog.make.models', $make))->assertOk()->assertDontSee('Fortuner');
         $this->actingAs($admin, 'admin')->put(route('admin.vehicles.models.update', [$make, $model]), [
-            'name' => 'Fortuner 4x4', 'is_active' => 1,
+            'name' => 'Fortuner 4x4', 'is_active' => 1, 'coverage_sqm' => 5,
             'panels' => [['name' => 'Front Bumper', 'min_sqm' => 2.5, 'max_sqm' => 4.5]],
         ])->assertRedirect(route('admin.vehicles.models.show', [$make, $model]));
         $this->assertDatabaseHas('vehicle_models', ['id' => $model->id, 'name' => 'Fortuner 4x4', 'is_active' => true]);
-        $this->assertDatabaseHas('vehicle_model_panels', ['vehicle_model_id' => $model->id, 'name' => 'Front Bumper', 'min_sqm' => 2.5]);
+        $this->assertDatabaseHas('vehicle_model_panels', ['vehicle_model_id' => $model->id, 'name' => 'Front Bumper', 'min_sqm' => null]);
         $this->actingAs($admin, 'admin')->delete(route('admin.vehicles.models.destroy', [$make, $model]))->assertRedirect(route('admin.vehicles.show', $make));
         Storage::disk('public')->assertMissing($model->photo_path);
         $this->assertSame('Fortuner', $claim->fresh()->vehicle_model);
@@ -117,7 +119,7 @@ class VehicleCatalogTest extends TestCase
             'photo_path' => UploadedFile::fake()->image('car.jpg')->store('vehicle-models', 'public')]);
         $oldPath = $model->photo_path;
         $this->actingAs($admin, 'admin')->put(route('admin.vehicles.models.update', [$make, $model]), [
-            'name' => '500', 'kind' => 'car', 'is_active' => 1, 'remove_photo' => 1,
+            'name' => '500', 'kind' => 'car', 'is_active' => 1, 'remove_photo' => 1, 'coverage_sqm' => 5,
             'panels' => [['name' => 'Bonnet', 'min_sqm' => 1, 'max_sqm' => 2, 'photo_polygon' => '[{"x":30,"y":20},{"x":60,"y":20},{"x":65,"y":45},{"x":25,"y":45}]']],
         ])->assertRedirect();
         $this->assertNull($model->fresh()->photo_path);
@@ -131,7 +133,7 @@ class VehicleCatalogTest extends TestCase
         $admin = Admin::create(['name' => 'Admin', 'email' => 'admin@example.com', 'password' => 'Password123']);
         $make = VehicleMake::create(['name' => 'Abarth', 'is_active' => true]);
         $this->actingAs($admin, 'admin')->post(route('admin.vehicles.models.store', $make), [
-            'name' => '500', 'kind' => 'car', 'is_active' => 1,
+            'name' => '500', 'kind' => 'car', 'is_active' => 1, 'coverage_sqm' => 5,
             'panels' => [['name' => 'Bonnet', 'min_sqm' => 1, 'max_sqm' => 2,
                 'photo_polygon' => '[{"x":20,"y":20},{"x":80,"y":80},{"x":80,"y":20},{"x":20,"y":80}]']],
         ])->assertSessionHasErrors('panels');

@@ -16,7 +16,7 @@ class Plan extends Model
 
     public function getFormattedPriceAttribute(): string
     {
-        return $this->is_free ? 'Free' : '$'.number_format($this->price / 100, 2);
+        return $this->is_free ? 'Free' : $this->currency.' $'.number_format($this->price / 100, 2);
     }
 
     public function getIsFreeAttribute(): bool

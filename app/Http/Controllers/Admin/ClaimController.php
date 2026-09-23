@@ -11,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -45,9 +46,13 @@ class ClaimController extends Controller
         $validated = $request->validate([
             'status' => ['required', Rule::in(['approved', 'disapproved'])],
             'admin_notes' => ['nullable', 'required_if:status,disapproved', 'string', 'max:2000'],
-            'booking_date' => ['nullable', 'required_if:status,approved', 'date', 'after_or_equal:today'],
+            'booking_date' => ['nullable', 'date', 'after_or_equal:today'],
         ]);
-        $claim->update(array_merge($validated, ['booking_date' => $validated['status'] === 'approved' ? $validated['booking_date'] : null, 'reviewed_at' => now()]));
+        $bookingDate = $validated['booking_date'] ?? ($claim->available_date?->isToday() || $claim->available_date?->isFuture() ? $claim->available_date->toDateString() : null);
+        if ($validated['status'] === 'approved' && ! $bookingDate) {
+            throw ValidationException::withMessages(['booking_date' => 'Choose a booking date or ask the customer for a new available date.']);
+        }
+        $claim->update(array_merge($validated, ['booking_date' => $validated['status'] === 'approved' ? $bookingDate : null, 'reviewed_at' => now()]));
         $notifications->claimDecision($claim->fresh('user'));
 
         return back()->with('status', 'Claim marked as '.$validated['status'].'.');

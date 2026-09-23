@@ -11,7 +11,7 @@ class WarrantyCode extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['code', 'is_active', 'used_by_user_id', 'used_at'];
+    protected $fillable = ['code', 'subscription_id', 'is_active', 'used_by_user_id', 'used_at'];
 
     protected function casts(): array
     {
@@ -21,6 +21,11 @@ class WarrantyCode extends Model
     public function usedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'used_by_user_id');
+    }
+
+    public function subscription(): BelongsTo
+    {
+        return $this->belongsTo(Subscription::class);
     }
 
     public function claim(): HasOne

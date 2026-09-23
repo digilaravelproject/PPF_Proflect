@@ -3,10 +3,13 @@
 namespace Tests\Feature;
 
 use App\Mail\PaymentSuccessfulMail;
+use App\Mail\WarrantyCodeMail;
 use App\Models\Admin;
 use App\Models\Payment;
 use App\Models\Plan;
+use App\Models\Subscription;
 use App\Models\User;
+use App\Models\WarrantyCode;
 use App\Services\RazorpayService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -57,8 +60,8 @@ class PortalWorkflowTest extends TestCase
         $this->assertAuthenticatedAs($admin, 'admin');
         $this->get(route('admin.vehicles.index'))->assertOk()->assertSee('Vehicle catalog')->assertSee('Warranty Codes')->assertSee('Subscription Plans');
         $this->get(route('admin.warranty-codes.index'))->assertOk()->assertSee('Warranty codes');
-        $this->post(route('admin.plans.store'), ['name' => 'Platinum Plan', 'price_dollars' => 1299, 'duration_years' => 5, 'coverage_sqm' => 8, 'features_text' => "Damage cover\nLabour included", 'accent' => 'black', 'is_active' => 1, 'sort_order' => 3])->assertRedirect(route('admin.plans.index'));
-        $this->assertDatabaseHas('plans', ['slug' => 'platinum-plan', 'price' => 129900, 'currency' => 'USD']);
+        $this->post(route('admin.plans.store'), ['name' => 'Platinum Plan', 'price_aud' => 1299, 'duration_years' => 5, 'coverage_sqm' => 8, 'features_text' => "Damage cover\nLabour included", 'accent' => 'black', 'is_active' => 1, 'sort_order' => 3])->assertRedirect(route('admin.plans.index'));
+        $this->assertDatabaseHas('plans', ['slug' => 'platinum-plan', 'price' => 129900, 'currency' => 'AUD']);
         $this->put(route('admin.profile.update'), ['name' => 'Primary Admin', 'email' => 'admin@ppf.com'])->assertSessionHas('status');
         $this->assertDatabaseHas('admins', ['id' => $admin->id, 'name' => 'Primary Admin']);
     }
@@ -68,7 +71,7 @@ class PortalWorkflowTest extends TestCase
         Mail::fake();
         $user = User::factory()->create();
         $plan = Plan::create(['name' => 'Gold', 'slug' => 'gold', 'price' => 89900, 'duration_years' => 5, 'coverage_sqm' => 5, 'is_active' => true]);
-        $payment = Payment::create(['user_id' => $user->id, 'plan_id' => $plan->id, 'gateway_order_id' => 'order_test', 'amount' => 89900, 'currency' => 'USD']);
+        $payment = Payment::create(['user_id' => $user->id, 'plan_id' => $plan->id, 'gateway_order_id' => 'order_test', 'amount' => 89900, 'currency' => 'AUD']);
         $this->mock(RazorpayService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('verifyPayment')->once()->andReturn(['method' => 'upi']);
         });
@@ -76,13 +79,29 @@ class PortalWorkflowTest extends TestCase
         $this->actingAs($user)->postJson(route('payments.verify'), $payload)->assertOk()->assertJsonStructure(['redirect']);
         $this->assertDatabaseHas('subscriptions', ['user_id' => $user->id, 'payment_id' => $payment->id, 'status' => 'active']);
         $this->assertDatabaseHas('payments', ['id' => $payment->id, 'status' => 'paid', 'gateway_payment_id' => 'pay_test']);
-        Mail::assertSent(PaymentSuccessfulMail::class);
+        $issuedCode = WarrantyCode::where('subscription_id', Subscription::firstOrFail()->id)->firstOrFail();
+        Mail::assertSent(PaymentSuccessfulMail::class, fn ($mail) => $mail->warrantyCode->id === $issuedCode->id && str_contains($mail->render(), $issuedCode->code));
+        Mail::assertNotSent(WarrantyCodeMail::class);
         $this->actingAs($user)->postJson(route('payments.verify'), $payload)->assertOk();
         $this->assertDatabaseCount('subscriptions', 1);
     }
 
+    public function test_paid_checkout_order_uses_aud(): void
+    {
+        $user = User::factory()->create();
+        $plan = Plan::create(['name' => 'Gold', 'slug' => 'gold', 'price' => 89900, 'currency' => 'AUD', 'duration_years' => 5, 'coverage_sqm' => 5, 'is_active' => true]);
+        $this->mock(RazorpayService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('createOrder')->once()->andReturn(['id' => 'order_aud_test']);
+        });
+
+        $this->actingAs($user)->postJson(route('payments.order'), ['plan_id' => $plan->id])
+            ->assertOk()->assertJsonPath('currency', 'AUD');
+        $this->assertDatabaseHas('payments', ['gateway_order_id' => 'order_aud_test', 'currency' => 'AUD']);
+    }
+
     public function test_customer_can_activate_the_free_plan_without_payment_for_fifteen_days_only_once(): void
     {
+        Mail::fake();
         $user = User::factory()->create(['onboarding_completed_at' => null]);
         $plan = Plan::query()->where('slug', 'free')->firstOrFail();
 
@@ -90,6 +109,14 @@ class PortalWorkflowTest extends TestCase
             ->assertRedirect(route('subscription.success'));
 
         $subscription = $user->subscriptions()->firstOrFail();
+        $user = $user->fresh();
+        $issuedCode = WarrantyCode::where('subscription_id', $subscription->id)->firstOrFail();
+        Mail::assertSent(PaymentSuccessfulMail::class, fn ($mail) => $mail->warrantyCode->id === $issuedCode->id && str_contains($mail->render(), $issuedCode->code));
+        Mail::assertNotSent(WarrantyCodeMail::class);
+        $this->actingAs($user)->get(route('dashboard'))->assertOk()->assertSee('Get warranty code by email');
+        $this->actingAs($user)->post(route('warranty-code.email'))->assertSessionHas('status');
+        Mail::assertSent(WarrantyCodeMail::class, fn ($mail) => $mail->warrantyCode->id === $issuedCode->id && str_contains($mail->render(), $issuedCode->code));
+        $this->assertDatabaseCount('warranty_codes', 100);
         $this->assertNotNull($subscription->payment_id);
         $this->assertEquals(15, $subscription->starts_at->diffInDays($subscription->ends_at));
         $this->assertNotNull($user->fresh()->onboarding_completed_at);
@@ -109,6 +136,11 @@ class PortalWorkflowTest extends TestCase
         $this->actingAs($user)->post(route('subscription.free', $plan));
         $this->assertDatabaseCount('subscriptions', 1);
         $this->assertDatabaseCount('payments', 1);
+        Mail::assertSent(WarrantyCodeMail::class, 1);
+        $other = User::factory()->create(['onboarding_completed_at' => now()]);
+        Subscription::create(['user_id' => $other->id, 'plan_id' => $plan->id, 'status' => 'active', 'starts_at' => now(), 'ends_at' => now()->addDays(15)]);
+        $this->actingAs($other)->postJson(route('claims.warranty-code.check'), ['warranty_code' => $issuedCode->code])
+            ->assertOk()->assertJson(['valid' => false, 'status' => 'invalid']);
 
         $user = $user->fresh();
         $this->travel(16)->days();

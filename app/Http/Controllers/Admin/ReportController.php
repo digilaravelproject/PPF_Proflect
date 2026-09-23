@@ -65,7 +65,7 @@ class ReportController extends Controller
             $sections[] = ['title' => 'Claims', 'headers' => ['Claim', 'Warranty Code', 'Customer', 'Vehicle', 'Registration', 'Plan', 'Panels', 'Status', 'Submitted'], 'rows' => $rows];
         }
         if ($include('payments')) {
-            $rows = $this->dated(Payment::query()->with(['user', 'plan']), $from, $to)->get()->map(fn (Payment $payment) => [$payment->gateway_payment_id ?: $payment->gateway_order_id, $payment->user->name, $payment->plan->name, $payment->amount ? '$'.number_format($payment->amount / 100, 2) : 'Free', $payment->currency, ucfirst($payment->gateway), ucfirst(str_replace('_', ' ', $payment->status)), ($payment->paid_at ?? $payment->created_at)->format('Y-m-d')]);
+            $rows = $this->dated(Payment::query()->with(['user', 'plan']), $from, $to)->get()->map(fn (Payment $payment) => [$payment->gateway_payment_id ?: $payment->gateway_order_id, $payment->user->name, $payment->plan->name, $payment->formatted_amount, $payment->currency, ucfirst($payment->gateway), ucfirst(str_replace('_', ' ', $payment->status)), ($payment->paid_at ?? $payment->created_at)->format('Y-m-d')]);
             $sections[] = ['title' => 'Payments', 'headers' => ['Reference', 'Customer', 'Plan', 'Amount', 'Currency', 'Gateway', 'Status', 'Date'], 'rows' => $rows];
         }
 

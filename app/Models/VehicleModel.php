@@ -10,7 +10,7 @@ class VehicleModel extends Model
 {
     protected $appends = ['photo_url'];
 
-    protected $fillable = ['vehicle_make_id', 'name', 'kind', 'catalog_key', 'body_types', 'year_start', 'year_end', 'photo_path', 'is_active'];
+    protected $fillable = ['vehicle_make_id', 'name', 'kind', 'catalog_key', 'body_types', 'year_start', 'year_end', 'photo_path', 'coverage_sqm', 'is_active'];
 
     public function getPhotoUrlAttribute(): ?string { return $this->photo_path ? route('catalog.models.photo', $this) : null; }
 

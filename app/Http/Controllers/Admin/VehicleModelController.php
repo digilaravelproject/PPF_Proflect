@@ -32,7 +32,7 @@ class VehicleModelController extends Controller
         $path = $request->hasFile('photo') ? $request->file('photo')->store('vehicle-models', 'public') : null;
         try {
             DB::transaction(function () use ($vehicle, $data, $request, $path): void {
-                $model = $vehicle->models()->create(['name' => $data['name'], 'kind' => $data['kind'], 'photo_path' => $path, 'is_active' => $request->boolean('is_active')]);
+                $model = $vehicle->models()->create(['name' => $data['name'], 'kind' => $data['kind'], 'photo_path' => $path, 'coverage_sqm' => $data['coverage_sqm'], 'is_active' => $request->boolean('is_active')]);
                 $this->savePanels($model, $data['panels']);
             });
         } catch (\Throwable $exception) {
@@ -65,7 +65,7 @@ class VehicleModelController extends Controller
         $oldPath = $model->photo_path;
         try {
             DB::transaction(function () use ($model, $data, $request, $newPath): void {
-                $model->update(['name' => $data['name'], 'photo_path' => $request->boolean('remove_photo') ? null : ($newPath ?? $model->photo_path), 'is_active' => $request->boolean('is_active')]);
+                $model->update(['name' => $data['name'], 'photo_path' => $request->boolean('remove_photo') ? null : ($newPath ?? $model->photo_path), 'coverage_sqm' => $data['coverage_sqm'], 'is_active' => $request->boolean('is_active')]);
                 $model->panels()->delete();
                 $this->savePanels($model, $data['panels']);
             });
@@ -108,10 +108,9 @@ class VehicleModelController extends Controller
             'kind' => ['required', Rule::in($model ? [$model->kind] : array_keys(VehiclePanelPresets::NAMES))],
             'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'remove_photo' => ['nullable', 'boolean'],
+            'coverage_sqm' => ['required', 'numeric', 'min:0.01', 'max:5'],
             'panels' => ['required', 'array', 'min:1'],
             'panels.*.name' => ['required', 'string', 'max:100'],
-            'panels.*.min_sqm' => ['required', 'numeric', 'min:0', 'max:999999'],
-            'panels.*.max_sqm' => ['required', 'numeric', 'gte:panels.*.min_sqm', 'max:999999'],
             'panels.*.photo_polygon' => ['nullable', 'string', 'max:500'],
         ]);
     }
@@ -126,7 +125,7 @@ class VehicleModelController extends Controller
             }
             $keys[] = $key;
             $polygon = $this->parsePolygon($panel['photo_polygon'] ?? null);
-            $model->panels()->create(['key' => $key, 'name' => $panel['name'], 'min_sqm' => $panel['min_sqm'], 'max_sqm' => $panel['max_sqm'], 'photo_polygon' => $polygon]);
+            $model->panels()->create(['key' => $key, 'name' => $panel['name'], 'min_sqm' => null, 'max_sqm' => null, 'photo_polygon' => $polygon]);
         }
     }
 

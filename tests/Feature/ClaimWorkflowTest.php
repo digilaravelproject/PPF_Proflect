@@ -27,7 +27,7 @@ class ClaimWorkflowTest extends TestCase
         $this->actingAs($user)->get(route('claims.create'))
             ->assertOk()
             ->assertSee('Select damaged panels')
-            ->assertSee('Upload damage photos')
+            ->assertSee('Upload damage evidence')
             ->assertSee('Review');
 
         $response = $this->actingAs($user)->post(route('claims.store'), [
@@ -64,6 +64,30 @@ class ClaimWorkflowTest extends TestCase
         $this->actingAs($other)->get(route('claims.create'))->assertNotFound();
         $this->actingAs($other)->get(route('claims.show', $claim))->assertNotFound();
         $this->actingAs($other)->get(route('claims.photo', [$claim, 0]))->assertNotFound();
+    }
+
+    public function test_customer_video_and_available_date_reach_admin_and_approved_booking(): void
+    {
+        Storage::fake('public');
+        [$user] = $this->customerWithSubscription();
+        $code = WarrantyCode::query()->where('is_active', true)->whereNull('used_at')->firstOrFail();
+        $date = now()->addWeek()->toDateString();
+        $video = UploadedFile::fake()->createWithContent('damage.mp4', "\x00\x00\x00\x18ftypisom\x00\x00\x00\x00isommp42");
+
+        $this->actingAs($user)->post(route('claims.store'), [
+            'warranty_code' => $code->code, 'vehicle_make' => 'Toyota', 'vehicle_model' => 'Fortuner',
+            'registration_number' => 'MH12AB1234', 'panels' => ['bonnet'],
+            'photos' => [$video], 'available_date' => $date,
+        ])->assertRedirect();
+
+        $claim = Claim::firstOrFail();
+        $this->assertSame($date, $claim->available_date->toDateString());
+        $this->assertTrue($claim->isVideoEvidence(0));
+        $this->actingAs($user)->get(route('claims.show', $claim))->assertOk()->assertSee('Damage video 1');
+        $admin = Admin::create(['name' => 'Admin', 'email' => 'video-admin@example.com', 'password' => 'password123']);
+        $this->actingAs($admin, 'admin')->get(route('admin.claims.show', $claim))->assertOk()->assertSee('CUSTOMER AVAILABLE DATE')->assertSee('Damage video 1');
+        $this->actingAs($admin, 'admin')->put(route('admin.claims.update', $claim), ['status' => 'approved'])->assertSessionHas('status');
+        $this->assertSame($date, $claim->fresh()->booking_date->toDateString());
     }
 
     public function test_admin_can_filter_review_delete_claims_and_download_both_reports(): void

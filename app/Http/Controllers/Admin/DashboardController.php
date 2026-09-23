@@ -20,7 +20,6 @@ class DashboardController extends Controller
             return [
                 'label' => $month->format('M'),
                 'claims' => Claim::whereBetween('created_at', [$month->copy()->startOfMonth(), $month->copy()->endOfMonth()])->count(),
-                'revenue' => Payment::where('status', 'paid')->whereBetween('paid_at', [$month->copy()->startOfMonth(), $month->copy()->endOfMonth()])->sum('amount'),
             ];
         });
 
@@ -34,7 +33,7 @@ class DashboardController extends Controller
             'plans' => Plan::count(),
             'subscriptions' => Subscription::where('status', 'active')->where('ends_at', '>', now())->count(),
             'expiringSubscriptions' => Subscription::where('status', 'active')->whereBetween('ends_at', [now(), now()->addDays(30)])->count(),
-            'revenue' => Payment::where('status', 'paid')->sum('amount'),
+            'revenueByCurrency' => Payment::where('status', 'paid')->selectRaw('currency, SUM(amount) as total')->groupBy('currency')->pluck('total', 'currency'),
             'pendingClaims' => $claimStatuses['pending'],
             'claimStatuses' => $claimStatuses,
             'months' => $months,
