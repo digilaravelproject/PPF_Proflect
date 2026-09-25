@@ -40,7 +40,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('plan_id')->constrained()->restrictOnDelete();
-            $table->string('gateway')->default('razorpay');
+            $table->string('gateway')->default('stripe');
             $table->string('gateway_order_id')->unique();
             $table->string('gateway_payment_id')->nullable()->unique();
             $table->unsignedInteger('amount');

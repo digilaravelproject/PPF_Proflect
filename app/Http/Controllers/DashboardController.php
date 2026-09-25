@@ -10,9 +10,15 @@ use Throwable;
 
 class DashboardController extends Controller
 {
-    public function overview(): View
+    public function overview(WarrantyCodeService $codes): View
     {
-        return view('dashboard', ['subscription' => $this->activeSubscription()]);
+        $subscription = $this->activeSubscription();
+        $warrantyCode = $subscription ? $codes->issueForSubscription($subscription) : null;
+
+        return view('dashboard', [
+            'subscription' => $subscription,
+            'warrantyCode' => $warrantyCode,
+        ]);
     }
 
     public function emailWarrantyCode(Request $request, WarrantyCodeService $codes): RedirectResponse
@@ -31,9 +37,15 @@ class DashboardController extends Controller
         return back()->with('status', 'Your available warranty code has been sent to your email.');
     }
 
-    public function warranty(): View
+    public function warranty(WarrantyCodeService $codes): View
     {
-        return view('warranty', ['subscription' => $this->activeSubscription()]);
+        $subscription = $this->activeSubscription();
+        $warrantyCode = $subscription ? $codes->issueForSubscription($subscription) : null;
+
+        return view('warranty', [
+            'subscription' => $subscription,
+            'warrantyCode' => $warrantyCode,
+        ]);
     }
 
     public function vehicles(): View

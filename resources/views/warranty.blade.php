@@ -1,7 +1,28 @@
 <x-customer-layout title="My Warranty">
     <section class="welcome-row"><div><h2>Welcome back, {{ explode(' ', trim(auth()->user()->name))[0] }}.</h2><p>Here’s everything you need to manage your vehicle protection.</p></div><a href="{{ route('claims.create') }}" class="button button--dark">Make a claim <span>→</span></a></section>
     @if($subscription)
-    <form method="POST" action="{{ route('warranty-code.email') }}" class="warranty-code-form">@csrf<button class="button button--dark" type="submit">Email my available warranty code →</button></form>
+    <section class="panel warranty-code-action" style="margin-bottom: 20px;">
+        <div>
+            <span class="eyebrow">YOUR WARRANTY CODE</span>
+            @if(isset($warrantyCode) && $warrantyCode)
+                <div class="warranty-code-display-wrap">
+                    <h3 class="warranty-code-heading">Active Claim Code:</h3>
+                    <div class="warranty-code-box">
+                        <span class="code-value">{{ $warrantyCode->code }}</span>
+                        <button type="button" class="copy-code-btn" onclick="navigator.clipboard.writeText('{{ $warrantyCode->code }}'); this.textContent = 'Copied!'; setTimeout(() => this.textContent = 'Copy code', 2000);">Copy code</button>
+                    </div>
+                </div>
+                <p>Each warranty code is valid for one claim. Send it to {{ auth()->user()->email }} anytime.</p>
+            @else
+                <h3>Need your warranty code?</h3>
+                <p>We emailed a code when your subscription started. Send the current available code to {{ auth()->user()->email }} again whenever you need it.</p>
+            @endif
+        </div>
+        <form method="POST" action="{{ route('warranty-code.email') }}">
+            @csrf
+            <button type="submit" class="button button--dark">Email warranty code →</button>
+        </form>
+    </section>
     <section class="warranty-card" id="warranty"><div class="warranty-card__accent"></div><div class="warranty-card__top"><span class="status-pill"><i></i> PROGRAM ACTIVE</span><span class="warranty-card__id">WARRANTY #PF-{{ str_pad($subscription->id,6,'0',STR_PAD_LEFT) }}</span></div><div class="warranty-card__body"><div class="vehicle-art"><img src="{{ asset('images/premium-sedan.png') }}" alt="Premium four-door vehicle"></div><div class="warranty-card__details"><span class="eyebrow">YOUR VEHICLE</span><h3>Your registered vehicle</h3><p class="reg-number">PROFILE DETAILS AVAILABLE</p><div class="plan-row"><span class="plan-badge">{{ strtoupper(substr($subscription->plan->name,0,1)) }}</span><span><b>{{ $subscription->plan->name }}</b><small>{{ $subscription->plan->duration_label }} · {{ rtrim(rtrim($subscription->plan->coverage_sqm,'0'),'.') }} square metres</small></span></div></div><div class="coverage-ring" style="--progress:0deg"><div><b>0</b><span>of {{ rtrim(rtrim($subscription->plan->coverage_sqm,'0'),'.') }} m² used</span></div></div></div><div class="warranty-card__footer"><div><span>START DATE</span><b>{{ $subscription->starts_at->format('d M Y') }}</b></div><div><span>VALID UNTIL</span><b>{{ $subscription->ends_at->format('d M Y') }}</b></div><div><span>PROGRAM STATUS</span><b class="text-green">Active & protected</b></div><a href="{{ route('documents.certificate',$subscription) }}">View certificate →</a></div></section>
     @else
     <section class="panel no-plan-card"><span class="eyebrow">PROTECTION PLAN</span><h3>No active plan yet</h3><p class="mb-4">You can explore the available protection options whenever you are ready.</p><a href="{{ route('subscription.index') }}" class="button button--dark">View protection plans <span>→</span></a></section>

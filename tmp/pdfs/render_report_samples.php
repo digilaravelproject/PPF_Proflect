@@ -44,7 +44,7 @@ if ($kind === 'claims') {
 }
 
 if ($kind === 'payments') {
-    $paid = new Payment(['gateway' => 'razorpay', 'gateway_order_id' => 'order_R4Z0R001', 'gateway_payment_id' => 'pay_R4Z0R001', 'amount' => 89900, 'currency' => 'USD', 'status' => 'paid', 'paid_at' => now()->subDays(3)]);
+    $paid = new Payment(['gateway' => 'stripe', 'gateway_order_id' => 'cs_SAMPLE001', 'gateway_payment_id' => 'pi_SAMPLE001', 'amount' => 89900, 'currency' => 'USD', 'status' => 'paid', 'paid_at' => now()->subDays(3)]);
     $paid->id = 42;
     $paid->created_at = now()->subDays(3);
     $paid->setRelation('user', $user);

@@ -36,7 +36,7 @@ class PaymentController extends Controller
         $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', Rule::in(['created', 'paid', 'verification_failed'])],
-            'gateway' => ['nullable', Rule::in(['razorpay', 'free'])],
+            'gateway' => ['nullable', Rule::in(['stripe', 'razorpay', 'free'])],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
         ]);

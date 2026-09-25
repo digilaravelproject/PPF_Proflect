@@ -4,8 +4,8 @@ use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\ClaimController as AdminClaimController;
 use App\Http\Controllers\Admin\CustomerController as AdminCustomerController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
-use App\Http\Controllers\Admin\PaymentController as AdminPaymentController;
 use App\Http\Controllers\Admin\PasswordResetController as AdminPasswordResetController;
+use App\Http\Controllers\Admin\PaymentController as AdminPaymentController;
 use App\Http\Controllers\Admin\PlanController as AdminPlanController;
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
 use App\Http\Controllers\Admin\ReportController as AdminReportController;
@@ -24,7 +24,9 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\VehicleCatalogController;
+use App\Models\VehicleModel;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 Route::get('/', function () {
     return auth()->check()
@@ -37,10 +39,12 @@ Route::view('/privacy-policy', 'legal.privacy')->name('privacy');
 Route::get('/vehicle-data-credits', fn () => view('legal.vehicle-data-credits', [
     'credits' => file_get_contents(database_path('data/VEHICLE_DATA_ATTRIBUTION.md')),
 ]))->name('vehicle-data.credits');
-Route::get('/vehicle-models/{model}/photo', function (\App\Models\VehicleModel $model) {
-    abort_unless($model->photo_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($model->photo_path), 404);
-    return \Illuminate\Support\Facades\Storage::disk('public')->response($model->photo_path);
+Route::get('/vehicle-models/{model}/photo', function (VehicleModel $model) {
+    abort_unless($model->photo_path && Storage::disk('public')->exists($model->photo_path), 404);
+
+    return Storage::disk('public')->response($model->photo_path);
 })->name('catalog.models.photo');
+Route::post('/payments/stripe/webhook', [PaymentController::class, 'webhook'])->name('payments.webhook');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
@@ -62,7 +66,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/subscription/free/{plan}', [SubscriptionController::class, 'activateFree'])->middleware('throttle:10,1')->name('subscription.free');
     Route::post('/subscription/skip', [SubscriptionController::class, 'skip'])->name('subscription.skip');
     Route::post('/payments/order', [PaymentController::class, 'order'])->middleware('throttle:10,1')->name('payments.order');
-    Route::post('/payments/verify', [PaymentController::class, 'verify'])->middleware('throttle:15,1')->name('payments.verify');
+    Route::get('/payments/stripe/complete', [PaymentController::class, 'complete'])->middleware('throttle:15,1')->name('payments.complete');
     Route::get('/subscription/success', [PaymentController::class, 'success'])->name('subscription.success');
 
     Route::middleware(['onboarded', 'subscription.active'])->group(function () {

@@ -3,7 +3,9 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="csrf-token" content="{{ csrf_token() }}"><link rel="icon" type="image/png" href="{{ asset('favicon.png') }}"><title>{{ $title }} · Proflect</title>@vite(['resources/css/app.css','resources/js/app.js'])</head>
 <body class="dashboard-body customer-nav-body">
-@php($customerNotifications = auth()->user()->notifications()->latest()->limit(30)->get())
+@php
+    $customerNotifications = auth()->user()->notifications()->latest()->limit(30)->get();
+@endphp
 <header class="customer-navbar">
     <x-brand light />
     <button class="customer-nav-toggle" type="button" data-customer-nav-toggle aria-controls="customer-navigation" aria-expanded="false" aria-label="Open navigation">☰</button>

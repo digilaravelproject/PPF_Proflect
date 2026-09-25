@@ -4,7 +4,7 @@ The customer portal includes registration, secure sign-in, password recovery,
 an authenticated warranty dashboard, and session-safe logout.
 
 It also includes customer onboarding with admin-managed protection plans,
-Razorpay Standard Checkout, payment and welcome emails, customer/admin profile
+Stripe Checkout, payment and welcome emails, customer/admin profile
 management, and a separately guarded administration portal.
 
 ## Local setup
@@ -21,9 +21,11 @@ Password reset notifications use Laravel's configured mailer. The local
 configuration writes messages to `storage/logs/laravel.log`; set the `MAIL_*`
 environment values to an SMTP or transactional mail provider before production.
 
-Set `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` in `.env` using Razorpay Test
-Mode keys first. Every payment uses a server-created order and is fulfilled only
-after server-side signature, amount, currency, order, and status verification.
+Set `STRIPE_KEY`, `STRIPE_SECRET`, and `STRIPE_WEBHOOK_SECRET` in `.env`. Every
+payment uses a server-created Stripe Checkout Session and is fulfilled only after
+server-side customer, plan, amount, currency, PaymentIntent, and status verification.
+Configure the Stripe webhook endpoint as `/payments/stripe/webhook` for the
+`checkout.session.completed` and `checkout.session.async_payment_succeeded` events.
 
 The seeded local administrator is `admin@ppf.com` with password `admin123`.
 Change this password immediately outside local development.

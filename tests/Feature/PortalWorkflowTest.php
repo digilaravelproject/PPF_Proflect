@@ -10,7 +10,7 @@ use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Models\WarrantyCode;
-use App\Services\RazorpayService;
+use App\Services\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Mockery\MockInterface;
@@ -31,7 +31,7 @@ class PortalWorkflowTest extends TestCase
         $plan = Plan::query()->where('slug', 'free')->firstOrFail();
         $this->actingAs($user)->post(route('subscription.free', $plan));
 
-        $this->actingAs($user)->get(route('dashboard'))->assertOk()->assertSee('GOOD TO SEE YOU')->assertDontSee('WARRANTY #PF-');
+        $this->actingAs($user)->get(route('dashboard'))->assertOk()->assertSee('GOOD TO SEE YOU')->assertSee('ACTIVE WARRANTY CODE')->assertSee('data-copy-code', false)->assertDontSee('WARRANTY #PF-');
         $this->actingAs($user)->get(route('warranty.show'))->assertOk()->assertSee('WARRANTY #PF-')->assertSee('Customer navigation')->assertDontSee('customer-sidebar');
         $this->actingAs($user)->get(route('vehicles.index'))->assertOk()->assertSee('Your protected vehicles');
     }
@@ -66,23 +66,22 @@ class PortalWorkflowTest extends TestCase
         $this->assertDatabaseHas('admins', ['id' => $admin->id, 'name' => 'Primary Admin']);
     }
 
-    public function test_verified_razorpay_payment_activates_subscription_once_and_sends_email(): void
+    public function test_verified_stripe_payment_activates_subscription_once_and_sends_email(): void
     {
         Mail::fake();
         $user = User::factory()->create();
         $plan = Plan::create(['name' => 'Gold', 'slug' => 'gold', 'price' => 89900, 'duration_years' => 5, 'coverage_sqm' => 5, 'is_active' => true]);
-        $payment = Payment::create(['user_id' => $user->id, 'plan_id' => $plan->id, 'gateway_order_id' => 'order_test', 'amount' => 89900, 'currency' => 'AUD']);
-        $this->mock(RazorpayService::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('verifyPayment')->once()->andReturn(['method' => 'upi']);
+        $payment = Payment::create(['user_id' => $user->id, 'plan_id' => $plan->id, 'gateway' => 'stripe', 'gateway_order_id' => 'cs_test_123', 'amount' => 89900, 'currency' => 'AUD']);
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($payment): void {
+            $mock->shouldReceive('verifyCheckoutSession')->once()->with('cs_test_123', \Mockery::on(fn (Payment $value) => $value->is($payment)))->andReturn(['payment_intent_id' => 'pi_test', 'method' => 'card']);
         });
-        $payload = ['razorpay_payment_id' => 'pay_test', 'razorpay_order_id' => 'order_test', 'razorpay_signature' => str_repeat('a', 64)];
-        $this->actingAs($user)->postJson(route('payments.verify'), $payload)->assertOk()->assertJsonStructure(['redirect']);
+        $this->actingAs($user)->get(route('payments.complete', ['session_id' => 'cs_test_123']))->assertRedirect(route('subscription.success'));
         $this->assertDatabaseHas('subscriptions', ['user_id' => $user->id, 'payment_id' => $payment->id, 'status' => 'active']);
-        $this->assertDatabaseHas('payments', ['id' => $payment->id, 'status' => 'paid', 'gateway_payment_id' => 'pay_test']);
+        $this->assertDatabaseHas('payments', ['id' => $payment->id, 'gateway' => 'stripe', 'status' => 'paid', 'gateway_payment_id' => 'pi_test']);
         $issuedCode = WarrantyCode::where('subscription_id', Subscription::firstOrFail()->id)->firstOrFail();
         Mail::assertSent(PaymentSuccessfulMail::class, fn ($mail) => $mail->warrantyCode->id === $issuedCode->id && str_contains($mail->render(), $issuedCode->code));
         Mail::assertNotSent(WarrantyCodeMail::class);
-        $this->actingAs($user)->postJson(route('payments.verify'), $payload)->assertOk();
+        $this->actingAs($user)->get(route('payments.complete', ['session_id' => 'cs_test_123']))->assertRedirect(route('subscription.success'));
         $this->assertDatabaseCount('subscriptions', 1);
     }
 
@@ -90,13 +89,29 @@ class PortalWorkflowTest extends TestCase
     {
         $user = User::factory()->create();
         $plan = Plan::create(['name' => 'Gold', 'slug' => 'gold', 'price' => 89900, 'currency' => 'AUD', 'duration_years' => 5, 'coverage_sqm' => 5, 'is_active' => true]);
-        $this->mock(RazorpayService::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('createOrder')->once()->andReturn(['id' => 'order_aud_test']);
+        $this->mock(StripeService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('createCheckoutSession')->once()->andReturn(['id' => 'cs_aud_test', 'url' => 'https://checkout.stripe.com/c/pay/test']);
         });
 
         $this->actingAs($user)->postJson(route('payments.order'), ['plan_id' => $plan->id])
-            ->assertOk()->assertJsonPath('currency', 'AUD');
-        $this->assertDatabaseHas('payments', ['gateway_order_id' => 'order_aud_test', 'currency' => 'AUD']);
+            ->assertOk()->assertJsonPath('checkout_url', 'https://checkout.stripe.com/c/pay/test');
+        $this->assertDatabaseHas('payments', ['gateway' => 'stripe', 'gateway_order_id' => 'cs_aud_test', 'currency' => 'AUD']);
+    }
+
+    public function test_failed_stripe_verification_never_activates_a_subscription(): void
+    {
+        $user = User::factory()->create();
+        $plan = Plan::create(['name' => 'Silver', 'slug' => 'silver', 'price' => 54900, 'currency' => 'AUD', 'duration_years' => 3, 'coverage_sqm' => 3, 'is_active' => true]);
+        $payment = Payment::create(['user_id' => $user->id, 'plan_id' => $plan->id, 'gateway' => 'stripe', 'gateway_order_id' => 'cs_failed_test', 'amount' => 54900, 'currency' => 'AUD']);
+        $this->mock(StripeService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('verifyCheckoutSession')->once()->andThrow(new \RuntimeException('Invalid Stripe payment'));
+        });
+
+        $this->actingAs($user)->get(route('payments.complete', ['session_id' => 'cs_failed_test']))
+            ->assertRedirect(route('subscription.checkout', $plan));
+
+        $this->assertDatabaseHas('payments', ['id' => $payment->id, 'status' => 'verification_failed']);
+        $this->assertDatabaseCount('subscriptions', 0);
     }
 
     public function test_customer_can_activate_the_free_plan_without_payment_for_fifteen_days_only_once(): void
@@ -113,7 +128,8 @@ class PortalWorkflowTest extends TestCase
         $issuedCode = WarrantyCode::where('subscription_id', $subscription->id)->firstOrFail();
         Mail::assertSent(PaymentSuccessfulMail::class, fn ($mail) => $mail->warrantyCode->id === $issuedCode->id && str_contains($mail->render(), $issuedCode->code));
         Mail::assertNotSent(WarrantyCodeMail::class);
-        $this->actingAs($user)->get(route('dashboard'))->assertOk()->assertSee('Get warranty code by email');
+        $this->actingAs($user)->get(route('dashboard'))->assertOk()->assertSee('Get warranty code by email')->assertSee($issuedCode->code);
+        $this->actingAs($user)->get(route('warranty.show'))->assertOk()->assertSee($issuedCode->code);
         $this->actingAs($user)->post(route('warranty-code.email'))->assertSessionHas('status');
         Mail::assertSent(WarrantyCodeMail::class, fn ($mail) => $mail->warrantyCode->id === $issuedCode->id && str_contains($mail->render(), $issuedCode->code));
         $this->assertDatabaseCount('warranty_codes', 100);

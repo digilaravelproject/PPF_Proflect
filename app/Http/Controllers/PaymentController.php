@@ -2,33 +2,30 @@
 
 namespace App\Http\Controllers;
 
-use App\Mail\PaymentSuccessfulMail;
 use App\Models\Payment;
 use App\Models\Plan;
-use App\Models\Subscription;
-use App\Services\CustomerNotificationService;
-use App\Services\RazorpayService;
-use App\Services\WarrantyCodeService;
+use App\Services\PaymentFulfillmentService;
+use App\Services\StripeService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Http\Response;
 use Throwable;
 
 class PaymentController extends Controller
 {
-    public function order(Request $request, RazorpayService $razorpay): JsonResponse
+    public function order(Request $request, StripeService $stripe): JsonResponse
     {
         $validated = $request->validate(['plan_id' => ['required', 'integer', 'exists:plans,id']]);
         $plan = Plan::query()->whereKey($validated['plan_id'])->where('is_active', true)->where('price', '>', 0)->firstOrFail();
         try {
-            $order = $razorpay->createOrder($plan, $request->user());
+            $session = $stripe->createCheckoutSession($plan, $request->user());
             Payment::create([
-                'user_id' => $request->user()->id, 'plan_id' => $plan->id, 'gateway_order_id' => $order['id'],
+                'user_id' => $request->user()->id, 'plan_id' => $plan->id, 'gateway' => 'stripe', 'gateway_order_id' => $session['id'],
                 'amount' => $plan->price, 'currency' => $plan->currency, 'status' => 'created',
             ]);
 
-            return response()->json(['order_id' => $order['id'], 'amount' => $plan->price, 'currency' => $plan->currency, 'key' => config('services.razorpay.key_id')]);
+            return response()->json(['checkout_url' => $session['url']]);
         } catch (Throwable $exception) {
             report($exception);
 
@@ -36,52 +33,46 @@ class PaymentController extends Controller
         }
     }
 
-    public function verify(Request $request, RazorpayService $razorpay, CustomerNotificationService $notifications, WarrantyCodeService $codes): JsonResponse
+    public function complete(Request $request, StripeService $stripe, PaymentFulfillmentService $fulfillment): RedirectResponse
     {
-        $attributes = $request->validate([
-            'razorpay_payment_id' => ['required', 'string'], 'razorpay_order_id' => ['required', 'string'], 'razorpay_signature' => ['required', 'string'],
-        ]);
-        $payment = Payment::with('plan')->where('user_id', $request->user()->id)->where('gateway_order_id', $attributes['razorpay_order_id'])->firstOrFail();
-        if ($payment->status === 'paid') {
-            return response()->json(['redirect' => route('subscription.success')]);
+        $attributes = $request->validate(['session_id' => ['required', 'string', 'max:255']]);
+        $payment = Payment::query()->where('gateway', 'stripe')->where('user_id', $request->user()->id)
+            ->where('gateway_order_id', $attributes['session_id'])->firstOrFail();
+        if ($payment->status === 'paid' && $payment->subscription()->exists()) {
+            return redirect()->route('subscription.success');
         }
+
         try {
-            $gatewayPayment = $razorpay->verifyPayment($attributes, $payment->gateway_order_id, $payment->amount, $payment->currency);
-            DB::transaction(function () use ($payment, $attributes, $gatewayPayment, $request): void {
-                $locked = Payment::query()->whereKey($payment->id)->lockForUpdate()->firstOrFail();
-                if ($locked->status === 'paid') {
-                    return;
-                }
-                $locked->update(['gateway_payment_id' => $attributes['razorpay_payment_id'], 'status' => 'paid', 'paid_at' => now(), 'metadata' => ['method' => $gatewayPayment['method'] ?? null]]);
-                Subscription::create(['user_id' => $request->user()->id, 'plan_id' => $locked->plan_id, 'payment_id' => $locked->id, 'status' => 'active', 'starts_at' => now(), 'ends_at' => $payment->plan->subscriptionEndsAt()]);
-                $request->user()->update(['onboarding_completed_at' => now()]);
-            });
+            $gatewayPayment = $stripe->verifyCheckoutSession($attributes['session_id'], $payment);
+            $fulfillment->fulfill($payment, $gatewayPayment);
         } catch (Throwable $exception) {
             report($exception);
             $payment->update(['status' => 'verification_failed']);
 
-            return response()->json(['message' => 'Payment verification failed. No subscription was activated.'], 422);
+            return redirect()->route('subscription.checkout', $payment->plan_id)
+                ->withErrors(['payment' => 'Payment verification failed. No subscription was activated.']);
         }
 
-        $paidPayment = $payment->fresh(['plan', 'user']);
-        $subscription = Subscription::query()->where('payment_id', $payment->id)->firstOrFail();
-        $code = null;
+        return redirect()->route('subscription.success');
+    }
+
+    public function webhook(Request $request, StripeService $stripe, PaymentFulfillmentService $fulfillment): Response
+    {
         try {
-            $code = $codes->issueForSubscription($subscription);
+            $session = $stripe->checkoutSessionFromWebhook($request->getContent(), (string) $request->header('Stripe-Signature'));
+            if (! $session) {
+                return response('Webhook ignored');
+            }
+            $payment = Payment::query()->where('gateway', 'stripe')->where('gateway_order_id', $session->id)->firstOrFail();
+            $gatewayPayment = $stripe->verifyCheckoutSession($session->id, $payment);
+            $fulfillment->fulfill($payment, $gatewayPayment);
+
+            return response('Webhook handled');
         } catch (Throwable $exception) {
             report($exception);
-        }
-        if ($notifications->paymentSuccessful($paidPayment, $subscription)) {
-            if ($code) {
-                try {
-                    Mail::to($request->user())->send(new PaymentSuccessfulMail($paidPayment, $code));
-                } catch (Throwable $exception) {
-                    report($exception);
-                }
-            }
-        }
 
-        return response()->json(['redirect' => route('subscription.success')]);
+            return response('Webhook rejected', 400);
+        }
     }
 
     public function success(Request $request)

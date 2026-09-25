@@ -90,6 +90,43 @@ document.querySelectorAll('[data-notification-menu]').forEach((menu) => {
     });
 });
 
+document.querySelectorAll('[data-copy-code]').forEach((button) => {
+    button.addEventListener('click', async () => {
+        const code = button.dataset.code;
+        const feedback = button.querySelector('[data-copy-feedback]');
+        const icon = button.querySelector('[data-copy-icon]');
+        const copyWithFallback = () => {
+            const input = document.createElement('textarea');
+            input.value = code;
+            input.setAttribute('readonly', '');
+            input.style.position = 'fixed';
+            input.style.opacity = '0';
+            document.body.append(input);
+            input.select();
+            const copied = document.execCommand('copy');
+            input.remove();
+            if (!copied) throw new Error('Copy failed');
+        };
+
+        try {
+            if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(code);
+            else copyWithFallback();
+            button.classList.add('is-copied');
+            if (icon) icon.textContent = '✓';
+            if (feedback) feedback.textContent = `${code} copied to clipboard`;
+            button.title = 'Copied to clipboard';
+            window.setTimeout(() => {
+                button.classList.remove('is-copied');
+                if (icon) icon.textContent = '▣';
+                if (feedback) feedback.textContent = 'Click to copy warranty code';
+                button.title = 'Copy active warranty code';
+            }, 2000);
+        } catch (_) {
+            if (feedback) feedback.textContent = 'Could not copy automatically. Select and copy the code manually.';
+        }
+    });
+});
+
 if (document.querySelector('.sidebar') && !document.querySelector('.menu-button')) {
     const menuButton = document.createElement('button');
     menuButton.type = 'button';
@@ -122,8 +159,6 @@ document.querySelectorAll('[data-payment-button]').forEach((button) => {
         errorBox.hidden = true;
 
         try {
-            if (!window.Razorpay) throw new Error('The secure payment window could not load. Please check your connection and try again.');
-
             const orderResponse = await fetch(button.dataset.orderUrl, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf},
@@ -132,32 +167,10 @@ document.querySelectorAll('[data-payment-button]').forEach((button) => {
             const order = await orderResponse.json();
             if (!orderResponse.ok) throw new Error(order.message || 'Unable to prepare the payment.');
 
-            const checkout = new window.Razorpay({
-                key: order.key,
-                amount: order.amount,
-                currency: order.currency,
-                name: 'Proflect',
-                description: 'PPF Replacement Program',
-                order_id: order.order_id,
-                prefill: {name: button.dataset.customerName, email: button.dataset.customerEmail},
-                theme: {color: '#111820'},
-                modal: {ondismiss: () => { button.disabled = false; button.innerHTML = originalText; }},
-                handler: async (response) => {
-                    button.textContent = 'Confirming payment…';
-                    const verifyResponse = await fetch(button.dataset.verifyUrl, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf},
-                        body: JSON.stringify(response),
-                    });
-                    const result = await verifyResponse.json();
-                    if (!verifyResponse.ok) return showError(result.message || 'Payment verification failed.');
-                    window.location.assign(result.redirect);
-                },
-            });
-            checkout.on('payment.failed', (response) => showError(response.error?.description || 'Payment was not completed.'));
-            checkout.open();
+            if (!order.checkout_url) throw new Error('Stripe did not return a secure checkout URL.');
+            window.location.assign(order.checkout_url);
         } catch (error) {
-            showError(error.message || 'Unable to open Razorpay checkout.');
+            showError(error.message || 'Unable to open Stripe Checkout.');
         }
     });
 });
