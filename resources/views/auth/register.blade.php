@@ -48,7 +48,7 @@
             <div class="ppf-code-card ppf-code-card--preview" data-card-animate tabindex="0" role="button" aria-label="Animate PPF protection warranty card preview">
                 <div class="ppf-code-card__brand"><strong>PROFLECT</strong><span>PPF PROTECTION</span></div>
                 <small>WARRANTY</small>
-                <div class="ppf-code-card__number"><img src="{{ asset('images/proflect-logo.webp') }}" alt="Proflect logo"><b data-code-preview>{{ old('warranty_code') ?: '-----' }}</b></div>
+                <div class="ppf-code-card__number"><img src="{{ asset('images/proflect-logo-full.png') }}" alt="Proflect Paint Protection"><b data-code-preview>{{ old('warranty_code') ?: '-----' }}</b></div>
             </div>
         </div>
 

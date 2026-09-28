@@ -149,4 +149,21 @@ body{background:#f7f5f0}
 .claim-model-visual small{display:block;margin-top:10px;color:var(--muted);font-size:11px}
 @media(max-width:800px){.admin-panel-review{grid-template-columns:1fr}}
 
+/* Full Proflect lockup: keep the wordmark and PAINT PROTECTION line legible everywhere. */
+.brand__logo{width:auto;height:88px;max-width:150px;object-fit:contain}
+.landing-nav{height:112px}.landing-nav .brand__logo{height:102px;max-width:150px}
+.customer-nav-body{padding-top:92px}.customer-navbar{height:92px}.customer-navbar>.brand .brand__logo{width:auto;height:82px;max-width:118px}
+.offer-header,.simple-header{height:96px}.offer-header .brand__logo,.simple-header .brand__logo{height:86px;max-width:122px}
+.sidebar__brand .brand__logo{width:auto;height:128px;max-width:150px;margin:0 auto}.sidebar__brand{padding-top:4px}
+.admin-login-brand>.brand,.auth-visual__top>.brand{align-self:flex-start}.admin-login-brand .brand__logo,.auth-visual__top .brand__logo{height:118px;max-width:155px}
+.legal-header .brand__logo{height:82px;max-width:115px}.legal-header{min-height:98px}
+.success-card>.brand .brand__logo,.confirmation-shell>.brand .brand__logo{height:112px;max-width:145px}
+@media(max-width:940px){.customer-nav-body{padding-top:78px}.customer-navbar{height:78px}.customer-navbar>.brand .brand__logo{height:70px;max-width:96px}.customer-navbar__nav{top:78px}}
+@media(max-width:800px){.landing-nav{height:88px}.landing-nav .brand__logo{height:80px;max-width:108px}.landing-nav nav{top:88px}.auth-panel__mobile-brand .brand__logo{height:100px;max-width:135px}}
+@media(max-width:620px){.customer-navbar>.brand .brand__logo{width:auto;height:66px;max-width:90px}}
+
+/* The Rolls-Royce asset replaces every generic theme vehicle. */
+.landing-hero>img{object-position:center}
+.ppf-code-card__number img{width:64px;height:64px}
+
 \n

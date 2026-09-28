@@ -23,7 +23,7 @@ class AuthenticationTest extends TestCase
         $this->get(route('login'))->assertOk()->assertSee('Welcome back');
         $this->get(route('register'))->assertOk()->assertSee('Create your account')
             ->assertSee('ppf-code-card--preview', false)
-            ->assertSee(asset('images/proflect-logo.webp'), false);
+            ->assertSee(asset('images/proflect-logo-full.png'), false);
         $this->get(route('password.request'))->assertOk()->assertSee('Forgot your password?');
     }
 

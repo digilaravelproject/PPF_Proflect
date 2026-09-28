@@ -16,7 +16,7 @@
     </header>
     <main>
         <section class="landing-hero" id="program">
-            <img src="{{ asset('images/landing-hero-suv.png') }}" alt="Black premium vehicle protected by Proflect">
+            <img src="{{ asset('images/rolls-royce-spectre-series-ii-hero.png') }}" alt="Black Rolls-Royce Spectre Series II protected by Proflect">
             <div class="landing-hero__shade"></div>
             <div class="landing-hero__copy">
                 <span>PPF REPLACEMENT PROGRAM</span>
