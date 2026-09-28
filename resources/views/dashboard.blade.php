@@ -20,7 +20,15 @@
         <section class="dashboard-warranty-card">
             <div><span class="eyebrow">YOUR PPF PROTECTION</span><h3>Warranty card</h3><p>Your registered warranty and current subscription expiry are shown together.</p></div>
             <button type="button" class="ppf-code-card ppf-code-card--dashboard" data-card-animate data-copy-code data-code="{{ $warrantyCode->code }}" title="Copy warranty code">
-                <strong>PROFLECT</strong><span>PPF PROTECTION</span><small>WARRANTY</small><b>{{ $warrantyCode->code }}</b><em>Expires {{ $subscription->ends_at->format('d/m/y') }}</em>
+                <div class="ppf-code-card__brand"><strong>PROFLECT</strong><span>PAINT PROTECTION</span></div>
+                <small>WARRANTY</small>
+                <div class="ppf-code-card__number">
+                    <img class="ppf-code-card__logo-mark" src="{{ asset('images/proflect-logo.png') }}" alt="Proflect">
+                    <div class="ppf-code-card__code-wrap">
+                        <b>{{ $warrantyCode->code }}</b>
+                        <em>Expires {{ $subscription->ends_at->format('d/m/y') }}</em>
+                    </div>
+                </div>
                 <i class="sr-only" data-copy-feedback aria-live="polite">Click to copy warranty code</i>
             </button>
         </section>

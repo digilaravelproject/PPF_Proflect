@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Proflect · PPF Replacement Program</title>
-    @vite(['resources/css/app.css','resources/js/app.js'])
+    @vite(['resources/css/app.css', 'resources/css/auth-shade.css', 'resources/js/app.js'])
 </head>
 <body class="landing-body">
     <header class="landing-nav">

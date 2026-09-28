@@ -1,0 +1,69 @@
+/* ==========================================================================
+   Proflect - Auth & Landing Presentation Background Shade CSS
+   Applies dark faceted diagonal presentation shade (Screenshots 2 & 3)
+   ONLY to guest auth pages (Customer & Admin) and the public landing page.
+   DO NOT LOAD OR MERGE INTO app.css FOR LOGGED-IN CUSTOMER/ADMIN PAGES.
+   ========================================================================== */
+
+/* 1. Customer & Admin Auth Side Visual Panels */
+.auth-visual,
+.admin-login-brand {
+    position: relative !important;
+    background-color: #090a0c !important;
+    background-image: 
+        radial-gradient(circle at 85% 85%, rgba(219, 163, 66, 0.22) 0%, transparent 50%),
+        radial-gradient(circle at 20% 15%, rgba(58, 64, 77, 0.18) 0%, transparent 45%),
+        url('/images/bg-shade-presentation.svg') !important;
+    background-size: cover !important;
+    background-position: center center !important;
+    background-repeat: no-repeat !important;
+}
+
+/* Subtle overlay depth for auth visual sections */
+.auth-visual::before,
+.admin-login-brand::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(circle at 50% 50%, transparent 40%, rgba(0, 0, 0, 0.45) 100%);
+    z-index: 1;
+}
+
+/* Ensure contents stay above background overlays */
+.auth-visual > *,
+.admin-login-brand > * {
+    position: relative;
+    z-index: 2;
+}
+
+/* 2. Public Landing Page Background & Hero Section */
+.landing-body {
+    background-color: #08090b !important;
+    background-image: 
+        radial-gradient(circle at 85% 85%, rgba(219, 163, 66, 0.18) 0%, transparent 50%),
+        radial-gradient(circle at 20% 15%, rgba(58, 64, 77, 0.15) 0%, transparent 45%),
+        url('/images/bg-shade-presentation.svg') !important;
+    background-size: cover !important;
+    background-position: center center !important;
+    background-repeat: no-repeat !important;
+    background-attachment: fixed !important;
+}
+
+.landing-hero {
+    background-color: transparent !important;
+}
+
+.landing-hero__shade {
+    background: 
+        linear-gradient(90deg, rgba(8, 9, 11, 0.94) 0%, rgba(8, 9, 11, 0.78) 35%, rgba(8, 9, 11, 0.25) 70%, rgba(8, 9, 11, 0.45) 100%),
+        linear-gradient(0deg, rgba(8, 9, 11, 0.85), transparent 45%) !important;
+}
+
+/* Enhancements for responsive screens */
+@media (max-width: 800px) {
+    .admin-login-brand,
+    .auth-visual {
+        background-size: cover !important;
+    }
+}

@@ -46,9 +46,15 @@
                 <p class="warranty-feedback @error('warranty_code') invalid @enderror" data-warranty-feedback aria-live="polite">@error('warranty_code'){{ $message }}@enderror</p>
             </div>
             <div class="ppf-code-card ppf-code-card--preview" data-card-animate tabindex="0" role="button" aria-label="Animate PPF protection warranty card preview">
-                <div class="ppf-code-card__brand"><strong>PROFLECT</strong><span>PPF PROTECTION</span></div>
+                <div class="ppf-code-card__brand"><strong>PROFLECT</strong><span>PAINT PROTECTION</span></div>
                 <small>WARRANTY</small>
-                <div class="ppf-code-card__number"><img src="{{ asset('images/proflect-logo-full.png') }}" alt="Proflect Paint Protection"><b data-code-preview>{{ old('warranty_code') ?: '-----' }}</b></div>
+                <div class="ppf-code-card__number">
+                    <img class="ppf-code-card__logo-mark" src="{{ asset('images/proflect-logo.png') }}" alt="Proflect">
+                    <div class="ppf-code-card__code-wrap">
+                        <b data-code-preview>{{ old('warranty_code') ?: '-----' }}</b>
+                        <em>Expires {{ date('d/m/y', strtotime('+5 years')) }}</em>
+                    </div>
+                </div>
             </div>
         </div>
 

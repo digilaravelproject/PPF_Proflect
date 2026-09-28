@@ -7,7 +7,7 @@
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <title>{{ $title ?? 'Customer account' }} · {{ config('app.name', 'Proflect') }}</title>
     <meta name="description" content="Manage your Proflect PPF replacement program.">
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/css/app.css', 'resources/css/auth-shade.css', 'resources/js/app.js'])
 </head>
 <body class="auth-body">
     <main class="auth-shell">
