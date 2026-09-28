@@ -3,49 +3,43 @@
 namespace App\Services;
 
 use App\Models\WarrantyCode;
-use App\Models\Subscription;
 use App\Mail\WarrantyCodeMail;
-use Illuminate\Support\Facades\DB;
+use App\Models\Subscription;
+use App\Models\User;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 
 class WarrantyCodeService
 {
-    public function issueForSubscription(Subscription $subscription): WarrantyCode
+    public function generate(int $count, int $validityMonths): array
     {
-        return DB::transaction(function () use ($subscription): WarrantyCode {
-            Subscription::query()->whereKey($subscription->id)->lockForUpdate()->firstOrFail();
-            $existing = WarrantyCode::query()->where('subscription_id', $subscription->id)
-                ->where('is_active', true)->whereNull('used_at')->first();
-            if ($existing) return $existing;
+        $codes = [];
 
-            $code = WarrantyCode::query()->whereNull('subscription_id')->where('is_active', true)
-                ->whereNull('used_at')->lockForUpdate()->first() ?? $this->generate()[0];
-            $code->update(['subscription_id' => $subscription->id]);
+        for ($index = 0; $index < $count; $index++) {
+            do {
+                $value = str_pad((string) random_int(0, 99999), 5, '0', STR_PAD_LEFT);
+            } while (WarrantyCode::withTrashed()->where('code', $value)->exists());
 
-            return $code;
-        });
+            $codes[] = WarrantyCode::create([
+                'code' => $value,
+                'validity_months' => $validityMonths,
+                'is_active' => false,
+            ]);
+        }
+
+        return $codes;
+    }
+
+    public function forUser(User $user): ?WarrantyCode
+    {
+        return WarrantyCode::query()->where('used_by_user_id', $user->id)->latest('used_at')->first();
     }
 
     public function emailForSubscription(Subscription $subscription): WarrantyCode
     {
-        $code = $this->issueForSubscription($subscription);
+        $code = $this->forUser($subscription->user);
+        abort_unless($code, 404);
         Mail::to($subscription->user)->send(new WarrantyCodeMail($subscription->loadMissing('plan'), $code));
 
         return $code;
-    }
-
-    public function generate(int $count = 1): array
-    {
-        $codes = [];
-        for ($index = 0; $index < $count; $index++) {
-            do {
-                $code = 'CLM-'.now()->format('ymd').'-'.Str::upper(Str::random(6));
-            } while (WarrantyCode::withTrashed()->where('code', $code)->exists());
-
-            $codes[] = WarrantyCode::create(['code' => $code, 'is_active' => true]);
-        }
-
-        return $codes;
     }
 }

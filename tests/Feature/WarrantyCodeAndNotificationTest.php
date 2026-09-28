@@ -20,81 +20,81 @@ class WarrantyCodeAndNotificationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_claim_consumes_a_warranty_code_and_issues_another_to_the_subscription(): void
+    public function test_customer_registers_with_an_active_five_digit_code_and_claim_needs_no_code(): void
     {
         Notification::fake();
         Storage::fake('public');
-        [$user] = $this->customerWithSubscription();
-        $code = WarrantyCode::query()->where('is_active', true)->whereNull('used_at')->firstOrFail();
+        $code = WarrantyCode::create(['code' => '30383', 'validity_months' => 3, 'is_active' => true, 'activated_at' => now(), 'expires_at' => now()->addMonths(3)]);
+
+        $this->post(route('register'), [
+            'name' => 'Registered Customer', 'email' => 'registered@example.com', 'phone' => '9876543210',
+            'warranty_code' => '30383', 'password' => 'Protection123', 'password_confirmation' => 'Protection123', 'terms' => '1',
+        ])->assertRedirect(route('subscription.index'));
+        $user = User::where('email', 'registered@example.com')->firstOrFail();
+        $this->assertSame('used', $code->fresh()->status);
+        $this->assertSame($user->id, $code->fresh()->used_by_user_id);
+
+        $plan = Plan::create(['name' => 'Warranty Test', 'slug' => 'registration-claim', 'price' => 10000, 'duration_years' => 2, 'coverage_sqm' => 5, 'is_active' => true]);
+        $subscription = Subscription::create(['user_id' => $user->id, 'plan_id' => $plan->id, 'status' => 'active', 'starts_at' => now(), 'ends_at' => now()->addYear()]);
+        $user->update(['onboarding_completed_at' => now()]);
 
         $this->actingAs($user)->post(route('claims.store'), [
-            'warranty_code' => $code->code,
             'vehicle_make' => 'Toyota', 'vehicle_model' => 'Fortuner', 'registration_number' => 'MH12AB1234',
             'panels' => ['roof'], 'photos' => [UploadedFile::fake()->image('damage.jpg')],
         ])->assertRedirect();
 
         $claim = Claim::firstOrFail();
-        $this->assertSame($code->id, $claim->warranty_code_id);
+        $this->assertNull($claim->warranty_code_id);
+        $this->assertSame($subscription->id, $claim->subscription_id);
         $this->assertSame(['roof'], $claim->panels);
-        $this->assertNotNull($code->fresh()->used_at);
-        $this->assertSame($user->id, $code->fresh()->used_by_user_id);
-        $this->assertDatabaseHas('warranty_codes', ['subscription_id' => $claim->subscription_id, 'used_at' => null, 'is_active' => true]);
         Notification::assertSentTo($user, CustomerEventNotification::class, fn ($notification) => $notification->event === 'claim_received');
-
-        [$other] = $this->customerWithSubscription();
-        $this->actingAs($other)->from(route('claims.create'))->post(route('claims.store'), [
-            'warranty_code' => $code->code,
-            'vehicle_make' => 'Honda', 'vehicle_model' => 'City', 'registration_number' => 'MH01AA0001',
-            'panels' => ['front_bumper'], 'photos' => [UploadedFile::fake()->image('second.jpg')],
-        ])->assertRedirect(route('claims.create'))->assertSessionHasErrors('warranty_code');
     }
 
-    public function test_admin_can_filter_toggle_delete_and_view_used_customer_details(): void
+    public function test_admin_generates_a_batch_or_manually_adds_an_inactive_code_with_expiration(): void
     {
         $admin = Admin::create(['name' => 'Admin', 'email' => 'codes@example.com', 'password' => 'password123']);
-        [$user, $subscription] = $this->customerWithSubscription();
-        $used = WarrantyCode::query()->firstOrFail();
-        $claim = Claim::create(['claim_number' => 'CLM-TEST-USED', 'user_id' => $user->id, 'subscription_id' => $subscription->id, 'warranty_code_id' => $used->id, 'panels' => ['bonnet'], 'photos' => [], 'status' => 'pending']);
-        $used->update(['used_by_user_id' => $user->id, 'used_at' => now()]);
+        $this->actingAs($admin, 'admin')->post(route('admin.warranty-codes.store'), ['count' => 3, 'validity_months' => 7])->assertSessionHas('status');
+        $generated = WarrantyCode::query()->get();
+        $this->assertCount(3, $generated);
+        $this->assertCount(3, $generated->pluck('code')->unique());
+        $this->assertTrue($generated->every(fn (WarrantyCode $code) => preg_match('/^[0-9]{5}$/', $code->code) && ! $code->is_active && $code->validity_months === 7));
 
-        $this->actingAs($admin, 'admin')->get(route('admin.warranty-codes.index', ['search' => $used->code, 'status' => 'used']))->assertOk()->assertSee($used->code)->assertSee($user->email);
-        $this->actingAs($admin, 'admin')->get(route('admin.warranty-codes.show', $used->id))->assertOk()->assertSee($claim->claim_number);
+        $this->actingAs($admin, 'admin')->post(route('admin.warranty-codes.store-manual'), ['manual_code' => '22005', 'manual_validity_months' => 6])->assertSessionHas('status');
+        $code = WarrantyCode::where('code', '22005')->firstOrFail();
+        $this->assertFalse($code->is_active);
+        $this->assertNull($code->expires_at);
+        $this->assertSame('inactive', $code->status);
 
-        $available = WarrantyCode::query()->whereNull('used_at')->firstOrFail();
-        $this->actingAs($admin, 'admin')->patch(route('admin.warranty-codes.toggle', $available->id))->assertSessionHas('status');
-        $this->assertFalse($available->fresh()->is_active);
-        $this->assertDatabaseCount('warranty_codes', 101);
+        $this->actingAs($admin, 'admin')->patch(route('admin.warranty-codes.toggle', $code->id))->assertSessionHas('status');
+        $code->refresh();
+        $this->assertTrue($code->is_active);
+        $this->assertSame('available', $code->status);
+        $this->assertTrue($code->expires_at->isSameDay(now()->addMonths(6)));
+        $this->actingAs($admin, 'admin')->get(route('admin.warranty-codes.index', ['status' => 'available']))->assertOk()->assertSee('22005')->assertSee('Expires');
 
-        $deletable = WarrantyCode::query()->whereNull('used_at')->where('is_active', true)->firstOrFail();
-        $this->actingAs($admin, 'admin')->delete(route('admin.warranty-codes.destroy', $deletable->id))->assertRedirect(route('admin.warranty-codes.index'));
-        $this->assertSoftDeleted('warranty_codes', ['id' => $deletable->id]);
-        $this->assertSame(102, WarrantyCode::withTrashed()->count());
+        $this->actingAs($admin, 'admin')->post(route('admin.warranty-codes.store-manual'), ['manual_code' => 'ABC12', 'manual_validity_months' => 13])->assertSessionHasErrors(['manual_code', 'manual_validity_months']);
+        $this->actingAs($admin, 'admin')->delete(route('admin.warranty-codes.destroy', $code->id))->assertRedirect(route('admin.warranty-codes.index'));
+        $this->assertSoftDeleted('warranty_codes', ['id' => $code->id]);
+        $this->assertSame(4, WarrantyCode::withTrashed()->count());
     }
 
-    public function test_warranty_code_can_be_checked_instantly_for_every_availability_state(): void
+    public function test_registration_code_check_reports_every_availability_state(): void
     {
-        [$user] = $this->customerWithSubscription();
-        $available = WarrantyCode::query()->whereNull('used_at')->where('is_active', true)->firstOrFail();
+        $available = WarrantyCode::create(['code' => '11111', 'validity_months' => 1, 'is_active' => true, 'activated_at' => now(), 'expires_at' => now()->addMonth()]);
+        $used = WarrantyCode::create(['code' => '22222', 'validity_months' => 1, 'is_active' => true, 'activated_at' => now(), 'expires_at' => now()->addMonth(), 'used_at' => now(), 'used_by_user_id' => User::factory()->create()->id]);
+        $inactive = WarrantyCode::create(['code' => '33333', 'validity_months' => 1, 'is_active' => false]);
+        $expired = WarrantyCode::create(['code' => '44444', 'validity_months' => 1, 'is_active' => true, 'activated_at' => now()->subMonths(2), 'expires_at' => now()->subMonth()]);
 
-        $this->actingAs($user)->postJson(route('claims.warranty-code.check'), ['warranty_code' => $available->code])
+        $this->postJson(route('register.warranty-code.check'), ['warranty_code' => $available->code])
             ->assertOk()->assertJson(['valid' => true, 'status' => 'available']);
-        $this->actingAs($user)->postJson(route('claims.warranty-code.check'), ['warranty_code' => 'NOT-A-CODE'])
+        $this->postJson(route('register.warranty-code.check'), ['warranty_code' => '123'])
             ->assertOk()->assertJson(['valid' => false, 'status' => 'invalid']);
-
-        $used = WarrantyCode::query()->whereKeyNot($available->id)->firstOrFail();
-        $used->update(['used_by_user_id' => $user->id, 'used_at' => now()]);
-        $this->actingAs($user)->postJson(route('claims.warranty-code.check'), ['warranty_code' => $used->code])
+        $this->postJson(route('register.warranty-code.check'), ['warranty_code' => $used->code])
             ->assertOk()->assertJson(['valid' => false, 'status' => 'used']);
-
-        $inactive = WarrantyCode::query()->whereNotIn('id', [$available->id, $used->id])->firstOrFail();
-        $inactive->update(['is_active' => false]);
-        $this->actingAs($user)->postJson(route('claims.warranty-code.check'), ['warranty_code' => $inactive->code])
+        $this->postJson(route('register.warranty-code.check'), ['warranty_code' => $inactive->code])
             ->assertOk()->assertJson(['valid' => false, 'status' => 'inactive']);
-
-        $deleted = WarrantyCode::query()->whereNotIn('id', [$available->id, $used->id, $inactive->id])->firstOrFail();
-        $deleted->delete();
-        $this->actingAs($user)->postJson(route('claims.warranty-code.check'), ['warranty_code' => $deleted->code])
-            ->assertOk()->assertJson(['valid' => false, 'status' => 'deleted']);
+        $this->postJson(route('register.warranty-code.check'), ['warranty_code' => $expired->code])
+            ->assertOk()->assertJson(['valid' => false, 'status' => 'expired']);
     }
 
     public function test_claim_decisions_create_customer_notifications_with_required_context(): void

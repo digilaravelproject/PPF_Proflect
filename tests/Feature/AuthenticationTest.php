@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Mail\WelcomeCustomerMail;
 use App\Models\User;
+use App\Models\WarrantyCode;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -20,17 +21,21 @@ class AuthenticationTest extends TestCase
     {
         $this->get('/')->assertOk()->assertSee('Premium PPF');
         $this->get(route('login'))->assertOk()->assertSee('Welcome back');
-        $this->get(route('register'))->assertOk()->assertSee('Create your account');
+        $this->get(route('register'))->assertOk()->assertSee('Create your account')
+            ->assertSee('ppf-code-card--preview', false)
+            ->assertSee(asset('images/proflect-logo.webp'), false);
         $this->get(route('password.request'))->assertOk()->assertSee('Forgot your password?');
     }
 
     public function test_customer_can_register_and_is_signed_in(): void
     {
         Mail::fake();
+        WarrantyCode::create(['code' => '30383', 'validity_months' => 3, 'is_active' => true, 'activated_at' => now(), 'expires_at' => now()->addMonths(3)]);
         $response = $this->post(route('register'), [
             'name' => 'Rahul Kulkarni',
             'email' => 'rahul@example.com',
             'phone' => '9876543210',
+            'warranty_code' => '30383',
             'password' => 'Protection123',
             'password_confirmation' => 'Protection123',
             'terms' => '1',
@@ -39,6 +44,7 @@ class AuthenticationTest extends TestCase
         $response->assertRedirect(route('subscription.index'));
         $this->assertAuthenticated();
         $this->assertDatabaseHas('users', ['email' => 'rahul@example.com', 'phone' => '9876543210']);
+        $this->assertDatabaseHas('warranty_codes', ['code' => '30383', 'used_by_user_id' => User::first()->id]);
         $this->assertTrue(Hash::check('Protection123', User::first()->password));
         Mail::assertSent(WelcomeCustomerMail::class);
     }
@@ -50,7 +56,7 @@ class AuthenticationTest extends TestCase
             'email' => 'rahul@example.com',
             'password' => 'password',
             'password_confirmation' => 'different',
-        ])->assertSessionHasErrors(['phone', 'password', 'terms']);
+        ])->assertSessionHasErrors(['phone', 'warranty_code', 'password', 'terms']);
 
         $this->assertGuest();
     }

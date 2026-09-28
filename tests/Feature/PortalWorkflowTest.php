@@ -28,10 +28,11 @@ class PortalWorkflowTest extends TestCase
     public function test_overview_and_warranty_are_separate_customer_pages(): void
     {
         $user = User::factory()->create(['onboarding_completed_at' => now()]);
+        $this->attachWarrantyCode($user, '10001');
         $plan = Plan::query()->where('slug', 'free')->firstOrFail();
         $this->actingAs($user)->post(route('subscription.free', $plan));
 
-        $this->actingAs($user)->get(route('dashboard'))->assertOk()->assertSee('GOOD TO SEE YOU')->assertSee('ACTIVE WARRANTY CODE')->assertSee('data-copy-code', false)->assertDontSee('WARRANTY #PF-');
+        $this->actingAs($user)->get(route('dashboard'))->assertOk()->assertSee('GOOD TO SEE YOU')->assertSee('PPF PROTECTION')->assertSee('10001')->assertSee('Expires')->assertDontSee('YOUR WARRANTY CODE');
         $this->actingAs($user)->get(route('warranty.show'))->assertOk()->assertSee('WARRANTY #PF-')->assertSee('Customer navigation')->assertDontSee('customer-sidebar');
         $this->actingAs($user)->get(route('vehicles.index'))->assertOk()->assertSee('Your protected vehicles');
     }
@@ -70,6 +71,7 @@ class PortalWorkflowTest extends TestCase
     {
         Mail::fake();
         $user = User::factory()->create();
+        $this->attachWarrantyCode($user, '10002');
         $plan = Plan::create(['name' => 'Gold', 'slug' => 'gold', 'price' => 89900, 'duration_years' => 5, 'coverage_sqm' => 5, 'is_active' => true]);
         $payment = Payment::create(['user_id' => $user->id, 'plan_id' => $plan->id, 'gateway' => 'stripe', 'gateway_order_id' => 'cs_test_123', 'amount' => 89900, 'currency' => 'AUD']);
         $this->mock(StripeService::class, function (MockInterface $mock) use ($payment): void {
@@ -118,6 +120,7 @@ class PortalWorkflowTest extends TestCase
     {
         Mail::fake();
         $user = User::factory()->create(['onboarding_completed_at' => null]);
+        $this->attachWarrantyCode($user, '10003');
         $plan = Plan::query()->where('slug', 'free')->firstOrFail();
 
         $this->actingAs($user)->post(route('subscription.free', $plan))
@@ -128,11 +131,11 @@ class PortalWorkflowTest extends TestCase
         $issuedCode = WarrantyCode::where('subscription_id', $subscription->id)->firstOrFail();
         Mail::assertSent(PaymentSuccessfulMail::class, fn ($mail) => $mail->warrantyCode->id === $issuedCode->id && str_contains($mail->render(), $issuedCode->code));
         Mail::assertNotSent(WarrantyCodeMail::class);
-        $this->actingAs($user)->get(route('dashboard'))->assertOk()->assertSee('Get warranty code by email')->assertSee($issuedCode->code);
+        $this->actingAs($user)->get(route('dashboard'))->assertOk()->assertSee('Warranty card')->assertSee($issuedCode->code)->assertDontSee('YOUR WARRANTY CODE');
         $this->actingAs($user)->get(route('warranty.show'))->assertOk()->assertSee($issuedCode->code);
         $this->actingAs($user)->post(route('warranty-code.email'))->assertSessionHas('status');
         Mail::assertSent(WarrantyCodeMail::class, fn ($mail) => $mail->warrantyCode->id === $issuedCode->id && str_contains($mail->render(), $issuedCode->code));
-        $this->assertDatabaseCount('warranty_codes', 100);
+        $this->assertDatabaseCount('warranty_codes', 1);
         $this->assertNotNull($subscription->payment_id);
         $this->assertEquals(15, $subscription->starts_at->diffInDays($subscription->ends_at));
         $this->assertNotNull($user->fresh()->onboarding_completed_at);
@@ -153,11 +156,6 @@ class PortalWorkflowTest extends TestCase
         $this->assertDatabaseCount('subscriptions', 1);
         $this->assertDatabaseCount('payments', 1);
         Mail::assertSent(WarrantyCodeMail::class, 1);
-        $other = User::factory()->create(['onboarding_completed_at' => now()]);
-        Subscription::create(['user_id' => $other->id, 'plan_id' => $plan->id, 'status' => 'active', 'starts_at' => now(), 'ends_at' => now()->addDays(15)]);
-        $this->actingAs($other)->postJson(route('claims.warranty-code.check'), ['warranty_code' => $issuedCode->code])
-            ->assertOk()->assertJson(['valid' => false, 'status' => 'invalid']);
-
         $user = $user->fresh();
         $this->travel(16)->days();
         $this->actingAs($user)->get(route('dashboard'))->assertRedirect(route('subscription.index'));
@@ -202,5 +200,14 @@ class PortalWorkflowTest extends TestCase
         $this->actingAs($admin, 'admin')->delete(route('admin.customers.destroy', $customer))
             ->assertSessionHas('status');
         $this->assertDatabaseMissing('users', ['id' => $customer->id]);
+    }
+
+    private function attachWarrantyCode(User $user, string $code): WarrantyCode
+    {
+        return WarrantyCode::create([
+            'code' => $code, 'validity_months' => 12, 'is_active' => true,
+            'activated_at' => now(), 'expires_at' => now()->addYear(),
+            'used_by_user_id' => $user->id, 'used_at' => now(),
+        ]);
     }
 }

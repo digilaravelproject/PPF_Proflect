@@ -52,6 +52,7 @@ Route::middleware('guest')->group(function () {
 
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
     Route::post('/register', [RegisteredUserController::class, 'store']);
+    Route::post('/register/warranty-code/check', [RegisteredUserController::class, 'checkWarrantyCode'])->middleware('throttle:30,1')->name('register.warranty-code.check');
 
     Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
     Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])->name('password.email');
@@ -78,7 +79,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/claims/create', [ClaimController::class, 'create'])->name('claims.create');
         Route::get('/catalog/makes/{make}/models', [VehicleCatalogController::class, 'models'])->name('catalog.make.models');
         Route::get('/catalog/models/{model}', [VehicleCatalogController::class, 'show'])->name('catalog.model.show');
-        Route::post('/claims/warranty-code/check', [ClaimController::class, 'checkWarrantyCode'])->middleware('throttle:30,1')->name('claims.warranty-code.check');
         Route::post('/claims', [ClaimController::class, 'store'])->middleware('throttle:10,1')->name('claims.store');
         Route::get('/claims/{claim}', [ClaimController::class, 'show'])->name('claims.show');
         Route::get('/claims/{claim}/photos/{index}', [ClaimController::class, 'photo'])->whereNumber('index')->name('claims.photo');
@@ -116,6 +116,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('payments', AdminPaymentController::class)->only(['index', 'show']);
         Route::get('/warranty-codes', [AdminWarrantyCodeController::class, 'index'])->name('warranty-codes.index');
         Route::post('/warranty-codes', [AdminWarrantyCodeController::class, 'store'])->name('warranty-codes.store');
+        Route::post('/warranty-codes/manual', [AdminWarrantyCodeController::class, 'storeManual'])->name('warranty-codes.store-manual');
         Route::get('/warranty-codes/{warrantyCode}', [AdminWarrantyCodeController::class, 'show'])->name('warranty-codes.show');
         Route::patch('/warranty-codes/{warrantyCode}/toggle', [AdminWarrantyCodeController::class, 'toggle'])->name('warranty-codes.toggle');
         Route::delete('/warranty-codes/{warrantyCode}', [AdminWarrantyCodeController::class, 'destroy'])->name('warranty-codes.destroy');

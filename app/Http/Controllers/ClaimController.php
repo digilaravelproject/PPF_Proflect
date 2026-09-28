@@ -4,11 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Claim;
 use App\Models\Subscription;
-use App\Models\WarrantyCode;
 use App\Models\VehicleMake;
 use App\Models\VehicleModel;
 use App\Services\CustomerNotificationService;
-use App\Services\WarrantyCodeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,30 +20,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ClaimController extends Controller
 {
-    public function checkWarrantyCode(Request $request): JsonResponse
-    {
-        $code = strtoupper(trim((string) $request->input('warranty_code')));
-        if (! preg_match('/^CLM-[0-9]{6}-[A-Z0-9]{6}$/', $code)) {
-            return response()->json(['valid' => false, 'status' => 'invalid', 'message' => 'Enter a valid warranty code in the format CLM-260901-ZM9JVS.']);
-        }
-
-        $warrantyCode = WarrantyCode::withTrashed()->where('code', $code)->first();
-        if (! $warrantyCode || $warrantyCode->trashed()) {
-            return response()->json(['valid' => false, 'status' => $warrantyCode?->trashed() ? 'deleted' : 'invalid', 'message' => 'This warranty code is invalid or has been deleted.']);
-        }
-        if ($warrantyCode->used_at) {
-            return response()->json(['valid' => false, 'status' => 'used', 'message' => 'This warranty code has already been used for a claim.']);
-        }
-        if (! $warrantyCode->is_active) {
-            return response()->json(['valid' => false, 'status' => 'inactive', 'message' => 'This warranty code is inactive. Please contact Proflect support.']);
-        }
-        if ($warrantyCode->subscription_id && $warrantyCode->subscription_id !== $this->activeSubscription($request)->id) {
-            return response()->json(['valid' => false, 'status' => 'invalid', 'message' => 'This warranty code belongs to another subscription.']);
-        }
-
-        return response()->json(['valid' => true, 'status' => 'available', 'message' => 'Warranty code is valid and available for this claim.']);
-    }
-
     public function index(Request $request): View
     {
         $claims = $request->user()->claims()->with(['subscription.plan', 'warrantyCode'])->latest()->paginate(10);
@@ -62,13 +36,11 @@ class ClaimController extends Controller
         return view('claims.create', ['subscription' => $subscription, 'vehicleMakes' => $vehicleMakes]);
     }
 
-    public function store(Request $request, WarrantyCodeService $codes, CustomerNotificationService $notifications): RedirectResponse
+    public function store(Request $request, CustomerNotificationService $notifications): RedirectResponse
     {
         $subscription = $this->activeSubscription($request);
-        $request->merge(['warranty_code' => strtoupper(trim((string) $request->input('warranty_code')))]);
         $catalogRequired = VehicleMake::where('is_active', true)->whereHas('models', fn ($query) => $query->where('is_active', true))->exists();
         $validated = $request->validate([
-            'warranty_code' => ['required', 'string', 'max:30', 'regex:/^CLM-[0-9]{6}-[A-Z0-9]{6}$/'],
             'vehicle_make_id' => [$catalogRequired ? 'required' : 'nullable', 'integer', Rule::exists('vehicle_makes', 'id')->where('is_active', true)],
             'vehicle_model_id' => [$catalogRequired ? 'required' : 'nullable', 'integer', Rule::exists('vehicle_models', 'id')->where('is_active', true)],
             'vehicle_make' => [$catalogRequired ? 'nullable' : 'required', 'string', 'max:100'],
@@ -118,24 +90,10 @@ class ClaimController extends Controller
                 $paths[] = $photo->store('claims/'.$request->user()->id, 'public');
             }
 
-            $claim = DB::transaction(function () use ($validated, $request, $subscription, $paths, $codes, $model, $modelPhotoPath, $panelDetails): Claim {
-                $warrantyCode = WarrantyCode::withTrashed()->where('code', $validated['warranty_code'])->lockForUpdate()->first();
-                if (! $warrantyCode || $warrantyCode->trashed()) {
-                    throw ValidationException::withMessages(['warranty_code' => 'This warranty code is invalid or has been deleted.']);
-                }
-                if (! $warrantyCode->is_active) {
-                    throw ValidationException::withMessages(['warranty_code' => 'This warranty code is inactive. Please contact Proflect support.']);
-                }
-                if ($warrantyCode->used_at) {
-                    throw ValidationException::withMessages(['warranty_code' => 'This warranty code has already been used for a claim.']);
-                }
-                if ($warrantyCode->subscription_id && $warrantyCode->subscription_id !== $subscription->id) {
-                    throw ValidationException::withMessages(['warranty_code' => 'This warranty code belongs to another subscription.']);
-                }
-
+            $claim = DB::transaction(function () use ($validated, $request, $subscription, $paths, $model, $modelPhotoPath, $panelDetails): Claim {
                 $claim = Claim::create([
                     'claim_number' => $this->claimNumber(), 'user_id' => $request->user()->id,
-                    'subscription_id' => $subscription->id, 'warranty_code_id' => $warrantyCode->id,
+                    'subscription_id' => $subscription->id,
                     'vehicle_make' => $model?->make->name ?? $validated['vehicle_make'], 'vehicle_model' => $model?->name ?? $validated['vehicle_model'],
                     'vehicle_model_id' => $model?->id,
                     'model_coverage_sqm' => $model?->coverage_sqm,
@@ -145,8 +103,6 @@ class ClaimController extends Controller
                     'panels' => array_values(array_unique($validated['panels'])), 'panel_details' => $panelDetails, 'photos' => $paths,
                     'description' => $validated['description'] ?? null, 'available_date' => $validated['available_date'] ?? null, 'status' => 'pending',
                 ]);
-                $warrantyCode->update(['used_by_user_id' => $request->user()->id, 'used_at' => now()]);
-
                 return $claim;
             });
         } catch (\Throwable $exception) {
@@ -156,12 +112,6 @@ class ClaimController extends Controller
         }
 
         $notifications->claimReceived($claim->load('user'));
-        try {
-            $codes->issueForSubscription($subscription);
-        } catch (\Throwable $exception) {
-            report($exception);
-        }
-
         return redirect()->route('claims.show', $claim)->with('status', 'Your claim was submitted successfully.');
     }
 

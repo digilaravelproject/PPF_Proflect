@@ -13,7 +13,7 @@ class DashboardController extends Controller
     public function overview(WarrantyCodeService $codes): View
     {
         $subscription = $this->activeSubscription();
-        $warrantyCode = $subscription ? $codes->issueForSubscription($subscription) : null;
+        $warrantyCode = $codes->forUser(auth()->user());
 
         return view('dashboard', [
             'subscription' => $subscription,
@@ -40,7 +40,7 @@ class DashboardController extends Controller
     public function warranty(WarrantyCodeService $codes): View
     {
         $subscription = $this->activeSubscription();
-        $warrantyCode = $subscription ? $codes->issueForSubscription($subscription) : null;
+        $warrantyCode = $codes->forUser(auth()->user());
 
         return view('warranty', [
             'subscription' => $subscription,

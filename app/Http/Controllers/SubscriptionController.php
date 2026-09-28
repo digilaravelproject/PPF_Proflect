@@ -6,6 +6,7 @@ use App\Mail\PaymentSuccessfulMail;
 use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\Subscription;
+use App\Models\WarrantyCode;
 use App\Services\CustomerNotificationService;
 use App\Services\WarrantyCodeService;
 use Illuminate\Http\RedirectResponse;
@@ -77,6 +78,8 @@ class SubscriptionController extends Controller
             }
 
             $user->update(['onboarding_completed_at' => now()]);
+            WarrantyCode::query()->where('used_by_user_id', $user->id)->whereNull('subscription_id')
+                ->latest('used_at')->limit(1)->update(['subscription_id' => $subscription->id]);
 
             return $subscription;
         });
@@ -84,7 +87,7 @@ class SubscriptionController extends Controller
         $payment = $subscription->payment()->with(['plan', 'user'])->firstOrFail();
         $code = null;
         try {
-            $code = $codes->issueForSubscription($subscription);
+            $code = $codes->forUser($request->user());
         } catch (Throwable $exception) {
             report($exception);
         }

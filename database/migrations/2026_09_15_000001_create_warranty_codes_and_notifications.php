@@ -2,9 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 
 return new class extends Migration
 {
@@ -42,16 +40,6 @@ return new class extends Migration
             $table->timestamps();
             $table->unique(['user_id', 'event_key']);
         });
-
-        $now = now();
-        $rows = [];
-        for ($index = 0; $index < 100; $index++) {
-            do {
-                $code = 'CLM-'.$now->format('ymd').'-'.Str::upper(Str::random(6));
-            } while (collect($rows)->contains('code', $code));
-            $rows[] = ['code' => $code, 'is_active' => true, 'created_at' => $now, 'updated_at' => $now];
-        }
-        DB::table('warranty_codes')->insert($rows);
     }
 
     public function down(): void

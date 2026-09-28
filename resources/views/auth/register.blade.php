@@ -7,7 +7,7 @@
         <p>Join Proflect and keep your protection close.</p>
     </div>
 
-    <form method="POST" action="{{ route('register') }}" class="auth-form auth-form--compact">
+    <form method="POST" action="{{ route('register') }}" class="auth-form auth-form--compact" data-registration-form data-warranty-check-url="{{ route('register.warranty-code.check') }}">
         @csrf
         <div class="field">
             <label for="name">Full name</label>
@@ -34,6 +34,22 @@
                 <input id="phone" name="phone" type="tel" value="{{ old('phone') }}" placeholder="Your phone number" required autocomplete="tel">
             </div>
             @error('phone') <p class="field__error">{{ $message }}</p> @enderror
+        </div>
+
+        <div class="registration-warranty">
+            <div class="field">
+                <label for="warranty-code">Warranty number / code</label>
+                <div class="field__control" data-warranty-control>
+                    <input id="warranty-code" name="warranty_code" type="text" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" value="{{ old('warranty_code') }}" placeholder="5-digit code" required autocomplete="off">
+                </div>
+                <p class="registration-warranty__help">Enter the 5-digit code provided to you by the admin.</p>
+                <p class="warranty-feedback @error('warranty_code') invalid @enderror" data-warranty-feedback aria-live="polite">@error('warranty_code'){{ $message }}@enderror</p>
+            </div>
+            <div class="ppf-code-card ppf-code-card--preview" data-card-animate tabindex="0" role="button" aria-label="Animate PPF protection warranty card preview">
+                <div class="ppf-code-card__brand"><strong>PROFLECT</strong><span>PPF PROTECTION</span></div>
+                <small>WARRANTY</small>
+                <div class="ppf-code-card__number"><img src="{{ asset('images/proflect-logo.webp') }}" alt="Proflect logo"><b data-code-preview>{{ old('warranty_code') ?: '-----' }}</b></div>
+            </div>
         </div>
 
         <div class="field-grid">

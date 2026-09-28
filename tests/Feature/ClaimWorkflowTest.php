@@ -8,7 +8,6 @@ use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\User;
-use App\Models\WarrantyCode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -22,16 +21,14 @@ class ClaimWorkflowTest extends TestCase
     {
         Storage::fake('public');
         [$user, $subscription] = $this->customerWithSubscription();
-        $warrantyCode = WarrantyCode::query()->where('is_active', true)->whereNull('used_at')->firstOrFail();
-
         $this->actingAs($user)->get(route('claims.create'))
             ->assertOk()
             ->assertSee('Select damaged panels')
             ->assertSee('Upload damage evidence')
-            ->assertSee('Review');
+            ->assertSee('Review')
+            ->assertDontSee('Warranty code');
 
         $response = $this->actingAs($user)->post(route('claims.store'), [
-            'warranty_code' => $warrantyCode->code,
             'vehicle_make' => 'Toyota',
             'vehicle_model' => 'Fortuner',
             'registration_number' => 'MH12AB1234',
@@ -70,12 +67,11 @@ class ClaimWorkflowTest extends TestCase
     {
         Storage::fake('public');
         [$user] = $this->customerWithSubscription();
-        $code = WarrantyCode::query()->where('is_active', true)->whereNull('used_at')->firstOrFail();
         $date = now()->addWeek()->toDateString();
         $video = UploadedFile::fake()->createWithContent('damage.mp4', "\x00\x00\x00\x18ftypisom\x00\x00\x00\x00isommp42");
 
         $this->actingAs($user)->post(route('claims.store'), [
-            'warranty_code' => $code->code, 'vehicle_make' => 'Toyota', 'vehicle_model' => 'Fortuner',
+            'vehicle_make' => 'Toyota', 'vehicle_model' => 'Fortuner',
             'registration_number' => 'MH12AB1234', 'panels' => ['bonnet'],
             'photos' => [$video], 'available_date' => $date,
         ])->assertRedirect();
@@ -146,7 +142,6 @@ class ClaimWorkflowTest extends TestCase
             ->assertOk()->assertHeader('content-type', 'application/pdf');
 
         $this->actingAs($user)->from(route('claims.create'))->post(route('claims.store'), [
-            'warranty_code' => WarrantyCode::query()->where('is_active', true)->whereNull('used_at')->value('code'),
             'vehicle_make' => 'Tata',
             'vehicle_model' => 'Indigo XZ',
             'registration_number' => 'MH24AH0850',

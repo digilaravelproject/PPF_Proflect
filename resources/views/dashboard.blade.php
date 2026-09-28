@@ -2,16 +2,8 @@
     <section class="overview-hero">
         <div>
             <span class="eyebrow">GOOD TO SEE YOU</span>
-            <div class="overview-hero__welcome" style="gap: 120px!important;">
+            <div class="overview-hero__welcome">
                 <h2>Welcome back, {{ explode(' ', trim(auth()->user()->name))[0] }}.</h2>
-                @if(isset($warrantyCode) && $warrantyCode)
-                    <button type="button" class="customer-claim-code" data-copy-code data-code="{{ $warrantyCode->code }}" title="Copy active warranty code">
-                        <span class="customer-claim-code__status" aria-hidden="true"></span>
-                        <span class="customer-claim-code__text"><small>YOUR WARRANTY CODE</small><strong>{{ $warrantyCode->code }}</strong></span>
-                        <span class="customer-claim-code__copy" data-copy-icon aria-hidden="true">▣</span>
-                        <span class="sr-only" data-copy-feedback aria-live="polite">Click to copy warranty code</span>
-                    </button>
-                @endif
             </div>
             <p>Manage your vehicle protection, claims and documents from one place.</p>
         </div>
@@ -24,23 +16,14 @@
         <article><span class="overview-stat-icon">▤</span><div><small>CLAIMS</small><b>{{ auth()->user()->claims()->count() }}</b><p>All submitted claim requests.</p></div></article>
     </section>
 
-    @if($subscription)
-    <section class="panel warranty-code-action">
-        <div>
-            <span class="eyebrow">YOUR WARRANTY CODE</span>
-            @if(isset($warrantyCode) && $warrantyCode)
-                <h3>Your warranty code is always within reach.</h3>
-                <p>Click the active warranty code beside your welcome message to copy it. You can also send it to {{ auth()->user()->email }} anytime.</p>
-            @else
-                <h3>Need your warranty code?</h3>
-                <p>We emailed a code when your subscription started. Send the current available code to {{ auth()->user()->email }} again whenever you need it.</p>
-            @endif
-        </div>
-        <form method="POST" action="{{ route('warranty-code.email') }}">
-            @csrf
-            <button type="submit" class="button button--dark">Get warranty code by email →</button>
-        </form>
-    </section>
+    @if($subscription && $warrantyCode)
+        <section class="dashboard-warranty-card">
+            <div><span class="eyebrow">YOUR PPF PROTECTION</span><h3>Warranty card</h3><p>Your registered warranty and current subscription expiry are shown together.</p></div>
+            <button type="button" class="ppf-code-card ppf-code-card--dashboard" data-card-animate data-copy-code data-code="{{ $warrantyCode->code }}" title="Copy warranty code">
+                <strong>PROFLECT</strong><span>PPF PROTECTION</span><small>WARRANTY</small><b>{{ $warrantyCode->code }}</b><em>Expires {{ $subscription->ends_at->format('d/m/y') }}</em>
+                <i class="sr-only" data-copy-feedback aria-live="polite">Click to copy warranty code</i>
+            </button>
+        </section>
     @endif
 
     <section class="dashboard-grid overview-grid">

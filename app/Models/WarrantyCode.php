@@ -11,11 +11,11 @@ class WarrantyCode extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['code', 'subscription_id', 'is_active', 'used_by_user_id', 'used_at'];
+    protected $fillable = ['code', 'subscription_id', 'is_active', 'validity_months', 'activated_at', 'expires_at', 'used_by_user_id', 'used_at'];
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean', 'used_at' => 'datetime', 'deleted_at' => 'datetime'];
+        return ['is_active' => 'boolean', 'activated_at' => 'datetime', 'expires_at' => 'datetime', 'used_at' => 'datetime', 'deleted_at' => 'datetime'];
     }
 
     public function usedBy(): BelongsTo
@@ -35,6 +35,19 @@ class WarrantyCode extends Model
 
     public function getStatusAttribute(): string
     {
-        return $this->trashed() ? 'deleted' : ($this->used_at ? 'used' : ($this->is_active ? 'available' : 'inactive'));
+        if ($this->trashed()) return 'deleted';
+        if ($this->used_at) return 'used';
+        if (! $this->is_active) return 'inactive';
+        if (! $this->expires_at || $this->expires_at->isPast()) return 'expired';
+
+        return 'available';
+    }
+
+    public function isAvailable(): bool
+    {
+        return ! $this->trashed()
+            && ! $this->used_at
+            && $this->is_active
+            && $this->expires_at?->isFuture();
     }
 }

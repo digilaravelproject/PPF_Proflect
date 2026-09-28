@@ -12,7 +12,7 @@
                         <button type="button" class="copy-code-btn" onclick="navigator.clipboard.writeText('{{ $warrantyCode->code }}'); this.textContent = 'Copied!'; setTimeout(() => this.textContent = 'Copy code', 2000);">Copy code</button>
                     </div>
                 </div>
-                <p>Each warranty code is valid for one claim. Send it to {{ auth()->user()->email }} anytime.</p>
+                <p>This is the registration code associated with your Proflect account.</p>
             @else
                 <h3>Need your warranty code?</h3>
                 <p>We emailed a code when your subscription started. Send the current available code to {{ auth()->user()->email }} again whenever you need it.</p>

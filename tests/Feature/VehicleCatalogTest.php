@@ -9,7 +9,6 @@ use App\Models\Subscription;
 use App\Models\User;
 use App\Models\VehicleMake;
 use App\Models\VehicleModel;
-use App\Models\WarrantyCode;
 use Database\Seeders\VehicleCatalogSeeder;
 use App\Notifications\AdminResetPasswordNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -55,19 +54,18 @@ class VehicleCatalogTest extends TestCase
         $user = User::factory()->create(['onboarding_completed_at' => now()]);
         $plan = Plan::create(['name' => 'Test', 'slug' => 'test', 'price' => 0, 'duration_years' => 1, 'coverage_sqm' => 5, 'is_active' => true]);
         Subscription::create(['user_id' => $user->id, 'plan_id' => $plan->id, 'status' => 'active', 'starts_at' => now(), 'ends_at' => now()->addYear()]);
-        $code = WarrantyCode::where('is_active', true)->whereNull('used_at')->firstOrFail();
         $this->actingAs($user)->get(route('claims.create'))->assertOk()->assertSee('Toyota');
         $this->actingAs($user)->get(route('catalog.make.models', $make))->assertOk()->assertSee('Fortuner');
         $this->actingAs($user)->get(route('catalog.model.show', $model))->assertOk()->assertSee('Front Bumper')
             ->assertJsonPath('coverage_sqm', 4.5)
             ->assertJsonPath('panels.0.photo_polygon.0.x', 45)->assertJsonPath('panels.0.photo_polygon.3.y', 75);
         $this->actingAs($user)->post(route('claims.store'), [
-            'warranty_code' => $code->code, 'vehicle_make_id' => $make->id, 'vehicle_model_id' => $model->id,
+            'vehicle_make_id' => $make->id, 'vehicle_model_id' => $model->id,
             'registration_number' => 'MH12AB1234', 'panels' => ['unknown_panel'],
             'photos' => [UploadedFile::fake()->image('damage.jpg')],
         ])->assertSessionHasErrors('panels');
         $this->actingAs($user)->post(route('claims.store'), [
-            'warranty_code' => $code->code, 'vehicle_make_id' => $make->id, 'vehicle_model_id' => $model->id,
+            'vehicle_make_id' => $make->id, 'vehicle_model_id' => $model->id,
             'registration_number' => 'MH12AB1234', 'panels' => ['front_bumper'],
             'photos' => [UploadedFile::fake()->image('damage.jpg')],
         ])->assertRedirect();

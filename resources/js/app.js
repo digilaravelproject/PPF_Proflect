@@ -35,6 +35,55 @@ document.querySelectorAll('[data-password-toggle]').forEach((button) => {
     });
 });
 
+document.querySelectorAll('[data-registration-form]').forEach((form) => {
+    const input = form.querySelector('[name="warranty_code"]');
+    const control = form.querySelector('[data-warranty-control]');
+    const feedback = form.querySelector('[data-warranty-feedback]');
+    const preview = form.querySelector('[data-code-preview]');
+    let timer;
+    let requestNumber = 0;
+
+    const setState = (state, message) => {
+        feedback.textContent = message;
+        feedback.className = `warranty-feedback ${state}`;
+        control.classList.toggle('is-valid', state === 'valid');
+        control.classList.toggle('is-invalid', state === 'invalid');
+        control.classList.toggle('is-checking', state === 'checking');
+    };
+    const check = async () => {
+        const code = input.value;
+        const currentRequest = ++requestNumber;
+        if (!/^[0-9]{5}$/.test(code)) return;
+        setState('checking', 'Checking warranty code…');
+        try {
+            const response = await fetch(form.dataset.warrantyCheckUrl, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content},
+                body: JSON.stringify({warranty_code: code}),
+            });
+            const result = await response.json();
+            if (currentRequest !== requestNumber) return;
+            setState(result.valid ? 'valid' : 'invalid', result.message || 'Warranty code could not be checked.');
+        } catch (_) {
+            if (currentRequest === requestNumber) setState('invalid', 'Warranty code could not be checked. Please try again.');
+        }
+    };
+
+    input.addEventListener('input', () => {
+        input.value = input.value.replace(/\D/g, '').slice(0, 5);
+        preview.textContent = input.value.padEnd(5, '-');
+        clearTimeout(timer);
+        ++requestNumber;
+        if (!input.value) setState('unchecked', '');
+        else if (input.value.length < 5) setState('invalid', 'Enter all 5 digits.');
+        else {
+            setState('checking', 'Checking warranty code…');
+            timer = window.setTimeout(check, 300);
+        }
+    });
+    if (/^[0-9]{5}$/.test(input.value)) check();
+});
+
 document.querySelectorAll('[data-sidebar-toggle]').forEach((button) => {
     button.addEventListener('click', () => {
         const open = document.body.classList.toggle('sidebar-open');
@@ -127,6 +176,24 @@ document.querySelectorAll('[data-copy-code]').forEach((button) => {
     });
 });
 
+document.querySelectorAll('[data-card-animate]').forEach((card) => {
+    const animate = () => {
+        card.classList.remove('is-card-animated');
+        void card.offsetWidth;
+        card.classList.add('is-card-animated');
+    };
+    card.addEventListener('click', animate);
+    card.addEventListener('animationend', () => card.classList.remove('is-card-animated'));
+    if (card.tagName !== 'BUTTON') {
+        card.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                animate();
+            }
+        });
+    }
+});
+
 if (document.querySelector('.sidebar') && !document.querySelector('.menu-button')) {
     const menuButton = document.createElement('button');
     menuButton.type = 'button';
@@ -189,13 +256,7 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
     const oldPanels = new Set(JSON.parse(wizard.querySelector('[data-old-panels]')?.textContent || '[]'));
     const registration = wizard.querySelector('[name="registration_number"]');
     const vehicleYear = wizard.querySelector('[name="vehicle_year"]');
-    const warrantyCode = wizard.querySelector('[name="warranty_code"]');
-    const warrantyControl = wizard.querySelector('[data-warranty-control]');
-    const warrantyFeedback = wizard.querySelector('[data-warranty-feedback]');
     const maximumVehicleYear = Number(form.dataset.maximumVehicleYear);
-    let warrantyState = 'unchecked';
-    let warrantyTimer;
-    let warrantyRequest = 0;
     const errorBox = document.createElement('div');
     errorBox.className = 'alert admin-error wizard-error';
     errorBox.setAttribute('role', 'alert');
@@ -329,63 +390,7 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
         errorBox.textContent = '';
     };
 
-    const setWarrantyFeedback = (state, message) => {
-        warrantyState = state;
-        warrantyFeedback.textContent = message;
-        warrantyFeedback.className = `warranty-feedback ${state}`;
-        warrantyControl.classList.toggle('is-valid', state === 'valid');
-        warrantyControl.classList.toggle('is-invalid', state === 'invalid');
-        warrantyControl.classList.toggle('is-checking', state === 'checking');
-    };
-
-    const checkWarrantyCode = async () => {
-        const code = warrantyCode.value.trim().toUpperCase();
-        warrantyCode.value = code;
-        const currentRequest = ++warrantyRequest;
-        if (!code) {
-            setWarrantyFeedback('unchecked', '');
-            return;
-        }
-        if (!/^CLM-[0-9]{6}-[A-Z0-9]{6}$/.test(code)) {
-            setWarrantyFeedback('invalid', 'Enter a valid warranty code in the format CLM-260901-ZM9JVS.');
-            return;
-        }
-
-        setWarrantyFeedback('checking', 'Checking warranty code…');
-        try {
-            const response = await fetch(form.dataset.warrantyCheckUrl, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content},
-                body: JSON.stringify({warranty_code: code}),
-            });
-            const result = await response.json();
-            if (currentRequest !== warrantyRequest) return;
-            if (!response.ok) throw new Error(result.message || 'Warranty code could not be checked.');
-            setWarrantyFeedback(result.valid ? 'valid' : 'invalid', result.message);
-        } catch (error) {
-            if (currentRequest !== warrantyRequest) return;
-            setWarrantyFeedback('invalid', error.message || 'Warranty code could not be checked. Please try again.');
-        }
-    };
-
-    warrantyCode?.addEventListener('input', () => {
-        warrantyCode.value = warrantyCode.value.toUpperCase();
-        clearTimeout(warrantyTimer);
-        const code = warrantyCode.value.trim();
-        if (!code) setWarrantyFeedback('unchecked', '');
-        else if (!/^CLM-[0-9]{6}-[A-Z0-9]{6}$/.test(code)) setWarrantyFeedback('invalid', 'Enter a valid warranty code in the format CLM-260901-ZM9JVS.');
-        else setWarrantyFeedback('checking', 'Checking warranty code…');
-        warrantyTimer = setTimeout(checkWarrantyCode, 350);
-    });
-    if (warrantyCode?.value) checkWarrantyCode();
-
     const validateVehicle = () => {
-        if (warrantyState !== 'valid') {
-            if (warrantyState === 'unchecked') setWarrantyFeedback('invalid', 'Enter a valid and unused warranty code before continuing.');
-            warrantyCode.focus();
-            warrantyFeedback.scrollIntoView({behavior: 'smooth', block: 'center'});
-            return false;
-        }
         const labels = {vehicle_make_id: 'vehicle make', vehicle_model_id: 'vehicle model', registration_number: 'registration number'};
         const missing = [vehicleMake, vehicleModel, registration].find((input) => !input.value.trim());
         if (missing) {
