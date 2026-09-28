@@ -27,9 +27,15 @@ class ClaimController extends Controller
         return view('claims.index', compact('claims'));
     }
 
-    public function create(Request $request): View
+    public function create(Request $request): View|RedirectResponse
     {
         $subscription = $this->activeSubscription($request);
+
+        if (! $subscription) {
+            return redirect()->route('subscription.index')->withErrors([
+                'subscription' => 'Choose an active protection plan before submitting a claim.',
+            ]);
+        }
 
         $vehicleMakes = VehicleMake::where('is_active', true)->whereHas('models', fn ($query) => $query->where('is_active', true))->orderBy('name')->get(['id', 'name']);
 
@@ -39,6 +45,13 @@ class ClaimController extends Controller
     public function store(Request $request, CustomerNotificationService $notifications): RedirectResponse
     {
         $subscription = $this->activeSubscription($request);
+
+        if (! $subscription) {
+            return redirect()->route('subscription.index')->withErrors([
+                'subscription' => 'Choose an active protection plan before submitting a claim.',
+            ]);
+        }
+
         $catalogRequired = VehicleMake::where('is_active', true)->whereHas('models', fn ($query) => $query->where('is_active', true))->exists();
         $validated = $request->validate([
             'vehicle_make_id' => [$catalogRequired ? 'required' : 'nullable', 'integer', Rule::exists('vehicle_makes', 'id')->where('is_active', true)],
@@ -129,13 +142,13 @@ class ClaimController extends Controller
         return Storage::disk('public')->response($claim->photos[$index]);
     }
 
-    private function activeSubscription(Request $request): Subscription
+    private function activeSubscription(Request $request): ?Subscription
     {
         return $request->user()->subscriptions()
             ->where('status', 'active')
             ->where('ends_at', '>', now())
             ->latest()
-            ->firstOrFail();
+            ->first();
     }
 
     private function claimNumber(): string

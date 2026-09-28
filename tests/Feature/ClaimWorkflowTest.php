@@ -58,7 +58,9 @@ class ClaimWorkflowTest extends TestCase
             'panels' => ['bonnet'], 'photos' => ['claims/private.jpg'], 'status' => 'pending',
         ]);
 
-        $this->actingAs($other)->get(route('claims.create'))->assertNotFound();
+        $this->actingAs($other)->get(route('claims.create'))
+            ->assertRedirect(route('subscription.index'))
+            ->assertSessionHasErrors('subscription');
         $this->actingAs($other)->get(route('claims.show', $claim))->assertNotFound();
         $this->actingAs($other)->get(route('claims.photo', [$claim, 0]))->assertNotFound();
     }
