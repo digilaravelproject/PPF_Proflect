@@ -4,11 +4,13 @@
 <section class="offer-hero"><div><span class="eyebrow eyebrow--light">EXCLUSIVE CUSTOMER OFFER</span><h1>Keep your PPF protected<br>after the unexpected.</h1><p>Optional accidental-damage replacement support for eligible Proflect PPF customers.</p></div><div class="offer-car" aria-hidden="true"><img src="{{ asset('images/rolls-royce-spectre-series-ii-cutout.png') }}" alt=""></div></section>
 <main class="offer-main">
     @if(session('status'))<div class="alert alert--success">{{ session('status') }}</div>@endif
+    @if($errors->any())<div class="alert payment-error">{{ $errors->first() }}</div>@endif
+    @if(session('claim_subscription_flow'))<div class="subscription-expired" role="status"><span>2</span><div><b>Choose a new subscription for your next claim.</b><p>Your new warranty code is verified. After activating a plan, continue directly to the claim form.</p></div></div>@endif
     @if($expiredSubscription)
         <div class="subscription-expired" role="alert"><span>!</span><div><b>Your {{ $expiredSubscription->plan->name }} subscription ended on {{ $expiredSubscription->ends_at->format('d M Y') }}.</b><p>Renew your protection below to restore access to your dashboard, claims, documents and profile.</p></div></div>
     @endif
     <div class="stepper"><span class="active"><i>1</i>Choose a plan</span><b></b><span><i>2</i>Checkout</span><b></b><span><i>3</i>Protected</span></div>
-    <div class="offer-title"><div><span class="eyebrow">TAILORED PROTECTION</span><h2>{{ $expiredSubscription ? 'Renew your protection to continue.' : 'Choose the cover that fits your journey.' }}</h2></div>@if(!$expiredSubscription)<form method="POST" action="{{ route('subscription.skip') }}">@csrf<button class="skip-button" type="submit">Skip for now →</button></form>@endif</div>
+    <div class="offer-title"><div><span class="eyebrow">TAILORED PROTECTION</span><h2>{{ session('claim_subscription_flow') ? 'Choose the cover for this claim.' : ($expiredSubscription ? 'Renew your protection to continue.' : 'Choose the cover that fits your journey.') }}</h2></div>@if(!$expiredSubscription && !session('claim_subscription_flow'))<form method="POST" action="{{ route('subscription.skip') }}">@csrf<button class="skip-button" type="submit">Skip for now →</button></form>@endif</div>
     @if($plans->isEmpty())<div class="empty-state"><h3>No plans available right now</h3><p>You can continue to your dashboard and return later.</p><form method="POST" action="{{ route('subscription.skip') }}">@csrf<button class="button button--dark">Continue to dashboard</button></form></div>@else
     <div class="plan-cards">@foreach($plans as $plan)<article class="plan-card plan-card--{{ $plan->accent }}">
         @if($loop->last)<span class="popular-badge">MOST POPULAR</span>@endif

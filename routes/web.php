@@ -17,6 +17,7 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\ClaimController;
+use App\Http\Controllers\ClaimWarrantyController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\NotificationController;
@@ -70,16 +71,22 @@ Route::middleware('auth')->group(function () {
     Route::get('/payments/stripe/complete', [PaymentController::class, 'complete'])->middleware('throttle:15,1')->name('payments.complete');
     Route::get('/subscription/success', [PaymentController::class, 'success'])->name('subscription.success');
 
+    Route::middleware('onboarded')->group(function () {
+        Route::get('/claims/warranty-code', [ClaimWarrantyController::class, 'create'])->name('claims.warranty.create');
+        Route::post('/claims/warranty-code/check', [ClaimWarrantyController::class, 'check'])->middleware('throttle:30,1')->name('claims.warranty.check');
+        Route::post('/claims/warranty-code', [ClaimWarrantyController::class, 'store'])->middleware('throttle:10,1')->name('claims.warranty.store');
+        Route::get('/claims/create', [ClaimController::class, 'create'])->name('claims.create');
+        Route::post('/claims', [ClaimController::class, 'store'])->middleware('throttle:10,1')->name('claims.store');
+    });
+
     Route::middleware(['onboarded', 'subscription.active'])->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'overview'])->name('dashboard');
         Route::post('/warranty-code/email', [DashboardController::class, 'emailWarrantyCode'])->middleware('throttle:3,1')->name('warranty-code.email');
         Route::get('/my-vehicles', [DashboardController::class, 'vehicles'])->name('vehicles.index');
         Route::get('/my-warranty', [DashboardController::class, 'warranty'])->name('warranty.show');
         Route::get('/claims', [ClaimController::class, 'index'])->name('claims.index');
-        Route::get('/claims/create', [ClaimController::class, 'create'])->name('claims.create');
         Route::get('/catalog/makes/{make}/models', [VehicleCatalogController::class, 'models'])->name('catalog.make.models');
         Route::get('/catalog/models/{model}', [VehicleCatalogController::class, 'show'])->name('catalog.model.show');
-        Route::post('/claims', [ClaimController::class, 'store'])->middleware('throttle:10,1')->name('claims.store');
         Route::get('/claims/{claim}', [ClaimController::class, 'show'])->name('claims.show');
         Route::get('/claims/{claim}/photos/{index}', [ClaimController::class, 'photo'])->whereNumber('index')->name('claims.photo');
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

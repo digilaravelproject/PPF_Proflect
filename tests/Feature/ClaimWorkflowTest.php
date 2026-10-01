@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Models\WarrantyCode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -63,6 +64,50 @@ class ClaimWorkflowTest extends TestCase
             ->assertSessionHasErrors('subscription');
         $this->actingAs($other)->get(route('claims.show', $claim))->assertNotFound();
         $this->actingAs($other)->get(route('claims.photo', [$claim, 0]))->assertNotFound();
+    }
+
+    public function test_each_additional_claim_requires_a_new_code_and_subscription(): void
+    {
+        Storage::fake('public');
+        [$user, $firstSubscription, $plan] = $this->customerWithSubscription();
+
+        $this->actingAs($user)->post(route('claims.store'), [
+            'vehicle_make' => 'Toyota', 'vehicle_model' => 'Fortuner', 'registration_number' => 'MH12AB1234',
+            'panels' => ['bonnet'], 'photos' => [UploadedFile::fake()->image('first-damage.jpg')],
+        ])->assertRedirect();
+
+        $this->assertNotNull($firstSubscription->fresh()->claimed_at);
+        $this->actingAs($user)->get(route('claims.create'))
+            ->assertRedirect(route('claims.warranty.create'));
+        $this->actingAs($user)->get(route('claims.warranty.create'))
+            ->assertOk()->assertSee('Enter a new warranty code')->assertSee('ppf-code-card', false);
+
+        $code = WarrantyCode::create([
+            'code' => '78124', 'validity_months' => 3, 'is_active' => true,
+            'activated_at' => now(), 'expires_at' => now()->addMonths(3),
+        ]);
+        $this->actingAs($user)->postJson(route('claims.warranty.check'), ['warranty_code' => $code->code])
+            ->assertOk()->assertJson(['valid' => true]);
+        $this->actingAs($user)->post(route('claims.warranty.store'), ['warranty_code' => $code->code])
+            ->assertRedirect(route('subscription.index'))
+            ->assertSessionHas('claim_subscription_flow', true);
+
+        $secondSubscription = Subscription::create([
+            'user_id' => $user->id, 'plan_id' => $plan->id, 'status' => 'active',
+            'starts_at' => now(), 'ends_at' => now()->addYear(),
+        ]);
+        $code->refresh()->update(['subscription_id' => $secondSubscription->id]);
+
+        $this->actingAs($user)->get(route('claims.create'))->assertOk();
+        $this->actingAs($user)->post(route('claims.store'), [
+            'vehicle_make' => 'Toyota', 'vehicle_model' => 'Fortuner', 'registration_number' => 'MH12AB1234',
+            'panels' => ['roof'], 'photos' => [UploadedFile::fake()->image('second-damage.jpg')],
+        ])->assertRedirect();
+
+        $secondClaim = Claim::latest('id')->firstOrFail();
+        $this->assertSame($secondSubscription->id, $secondClaim->subscription_id);
+        $this->assertSame($code->id, $secondClaim->warranty_code_id);
+        $this->assertDatabaseCount('claims', 2);
     }
 
     public function test_customer_video_and_available_date_reach_admin_and_approved_booking(): void

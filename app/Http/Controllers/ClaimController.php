@@ -6,6 +6,7 @@ use App\Models\Claim;
 use App\Models\Subscription;
 use App\Models\VehicleMake;
 use App\Models\VehicleModel;
+use App\Models\WarrantyCode;
 use App\Services\CustomerNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -29,13 +30,19 @@ class ClaimController extends Controller
 
     public function create(Request $request): View|RedirectResponse
     {
-        $subscription = $this->activeSubscription($request);
+        $subscription = $this->availableSubscription($request);
 
         if (! $subscription) {
+            if ($request->user()->claims()->exists()) {
+                return redirect()->route('claims.warranty.create');
+            }
+
             return redirect()->route('subscription.index')->withErrors([
                 'subscription' => 'Choose an active protection plan before submitting a claim.',
             ]);
         }
+
+        $request->session()->forget('claim_subscription_flow');
 
         $vehicleMakes = VehicleMake::where('is_active', true)->whereHas('models', fn ($query) => $query->where('is_active', true))->orderBy('name')->get(['id', 'name']);
 
@@ -44,9 +51,15 @@ class ClaimController extends Controller
 
     public function store(Request $request, CustomerNotificationService $notifications): RedirectResponse
     {
-        $subscription = $this->activeSubscription($request);
+        $subscription = $this->availableSubscription($request);
 
         if (! $subscription) {
+            if ($request->user()->claims()->exists()) {
+                return redirect()->route('claims.warranty.create')->withErrors([
+                    'subscription' => 'A new warranty code and subscription are required for each additional claim.',
+                ]);
+            }
+
             return redirect()->route('subscription.index')->withErrors([
                 'subscription' => 'Choose an active protection plan before submitting a claim.',
             ]);
@@ -104,9 +117,27 @@ class ClaimController extends Controller
             }
 
             $claim = DB::transaction(function () use ($validated, $request, $subscription, $paths, $model, $modelPhotoPath, $panelDetails): Claim {
+                $subscription = Subscription::query()->whereKey($subscription->id)->lockForUpdate()->firstOrFail();
+                if ($subscription->claimed_at || $subscription->status !== 'active' || ! $subscription->ends_at->isFuture()) {
+                    throw ValidationException::withMessages([
+                        'subscription' => 'This subscription has already been used. Enter a new warranty code and choose a new subscription.',
+                    ]);
+                }
+
+                $warrantyCode = WarrantyCode::query()
+                    ->where('subscription_id', $subscription->id)
+                    ->where('used_by_user_id', $request->user()->id)
+                    ->first();
+                if ($request->user()->claims()->exists() && ! $warrantyCode) {
+                    throw ValidationException::withMessages([
+                        'subscription' => 'Your new subscription must be activated with a new warranty code.',
+                    ]);
+                }
+
                 $claim = Claim::create([
                     'claim_number' => $this->claimNumber(), 'user_id' => $request->user()->id,
                     'subscription_id' => $subscription->id,
+                    'warranty_code_id' => $warrantyCode?->id,
                     'vehicle_make' => $model?->make->name ?? $validated['vehicle_make'], 'vehicle_model' => $model?->name ?? $validated['vehicle_model'],
                     'vehicle_model_id' => $model?->id,
                     'model_coverage_sqm' => $model?->coverage_sqm,
@@ -116,6 +147,7 @@ class ClaimController extends Controller
                     'panels' => array_values(array_unique($validated['panels'])), 'panel_details' => $panelDetails, 'photos' => $paths,
                     'description' => $validated['description'] ?? null, 'available_date' => $validated['available_date'] ?? null, 'status' => 'pending',
                 ]);
+                $subscription->forceFill(['claimed_at' => now()])->save();
                 return $claim;
             });
         } catch (\Throwable $exception) {
@@ -142,11 +174,21 @@ class ClaimController extends Controller
         return Storage::disk('public')->response($claim->photos[$index]);
     }
 
-    private function activeSubscription(Request $request): ?Subscription
+    private function availableSubscription(Request $request): ?Subscription
     {
-        return $request->user()->subscriptions()
+        $query = $request->user()->subscriptions()
             ->where('status', 'active')
             ->where('ends_at', '>', now())
+            ->whereNull('claimed_at');
+
+        if ($request->user()->claims()->exists()) {
+            $query->whereIn('id', WarrantyCode::query()
+                ->where('used_by_user_id', $request->user()->id)
+                ->whereNotNull('subscription_id')
+                ->select('subscription_id'));
+        }
+
+        return $query
             ->latest()
             ->first();
     }
