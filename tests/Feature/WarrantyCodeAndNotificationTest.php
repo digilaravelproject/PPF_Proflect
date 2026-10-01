@@ -53,29 +53,63 @@ class WarrantyCodeAndNotificationTest extends TestCase
     public function test_admin_generates_a_batch_or_manually_adds_an_inactive_code_with_expiration(): void
     {
         $admin = Admin::create(['name' => 'Admin', 'email' => 'codes@example.com', 'password' => 'password123']);
-        $this->actingAs($admin, 'admin')->post(route('admin.warranty-codes.store'), ['count' => 3, 'validity_months' => 7])->assertSessionHas('status');
+        $this->actingAs($admin, 'admin')->patch(route('admin.warranty-codes.expiration'), ['validity_months' => 7])->assertSessionHas('status');
+        $this->actingAs($admin, 'admin')->post(route('admin.warranty-codes.store'), ['count' => 3])->assertSessionHas('status');
         $generated = WarrantyCode::query()->get();
         $this->assertCount(3, $generated);
         $this->assertCount(3, $generated->pluck('code')->unique());
         $this->assertTrue($generated->every(fn (WarrantyCode $code) => preg_match('/^[0-9]{5}$/', $code->code) && ! $code->is_active && $code->validity_months === 7));
 
-        $this->actingAs($admin, 'admin')->post(route('admin.warranty-codes.store-manual'), ['manual_code' => '22005', 'manual_validity_months' => 6])->assertSessionHas('status');
+        $this->actingAs($admin, 'admin')->post(route('admin.warranty-codes.store-manual'), ['manual_code' => '22005'])->assertSessionHas('status');
         $code = WarrantyCode::where('code', '22005')->firstOrFail();
         $this->assertFalse($code->is_active);
         $this->assertNull($code->expires_at);
+        $this->assertSame(7, $code->validity_months);
         $this->assertSame('inactive', $code->status);
 
         $this->actingAs($admin, 'admin')->patch(route('admin.warranty-codes.toggle', $code->id))->assertSessionHas('status');
         $code->refresh();
         $this->assertTrue($code->is_active);
         $this->assertSame('available', $code->status);
-        $this->assertTrue($code->expires_at->isSameDay(now()->addMonths(6)));
+        $this->assertTrue($code->expires_at->isSameDay(now()->addMonths(7)));
         $this->actingAs($admin, 'admin')->get(route('admin.warranty-codes.index', ['status' => 'available']))->assertOk()->assertSee('22005')->assertSee('Expires');
 
-        $this->actingAs($admin, 'admin')->post(route('admin.warranty-codes.store-manual'), ['manual_code' => 'ABC12', 'manual_validity_months' => 13])->assertSessionHasErrors(['manual_code', 'manual_validity_months']);
+        $this->actingAs($admin, 'admin')->patch(route('admin.warranty-codes.expiration'), ['validity_months' => 3])->assertSessionHas('status');
+        $code->refresh();
+        $this->assertSame(3, $code->validity_months);
+        $this->assertTrue($code->expires_at->equalTo($code->activated_at->copy()->addMonthsNoOverflow(3)));
+        $this->assertTrue(WarrantyCode::query()->get()->every(fn (WarrantyCode $warrantyCode) => $warrantyCode->validity_months === 3));
+
+        $this->actingAs($admin, 'admin')->post(route('admin.warranty-codes.store-manual'), ['manual_code' => 'ABC12'])->assertSessionHasErrors(['manual_code']);
+        $this->actingAs($admin, 'admin')->patch(route('admin.warranty-codes.expiration'), ['validity_months' => 13])->assertSessionHasErrors(['validity_months']);
         $this->actingAs($admin, 'admin')->delete(route('admin.warranty-codes.destroy', $code->id))->assertRedirect(route('admin.warranty-codes.index'));
         $this->assertSoftDeleted('warranty_codes', ['id' => $code->id]);
         $this->assertSame(4, WarrantyCode::withTrashed()->count());
+    }
+
+    public function test_admin_downloads_the_sample_and_imports_warranty_codes_from_it(): void
+    {
+        $admin = Admin::create(['name' => 'Admin', 'email' => 'sheet@example.com', 'password' => 'password123']);
+        $sample = resource_path('templates/sample-warranty-code-sheet.xlsx');
+
+        $this->actingAs($admin, 'admin')->get(route('admin.warranty-codes.sample'))
+            ->assertOk()
+            ->assertDownload('Sample Warranty Code Sheet.xlsx');
+
+        $this->actingAs($admin, 'admin')->patch(route('admin.warranty-codes.expiration'), ['validity_months' => 4]);
+        $upload = new UploadedFile($sample, 'Warranty Codes.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
+        $this->actingAs($admin, 'admin')->post(route('admin.warranty-codes.import'), ['warranty_sheet' => $upload])
+            ->assertSessionHas('status');
+
+        $this->assertDatabaseCount('warranty_codes', 4);
+        foreach (['10001', '10002', '10003', '10004'] as $value) {
+            $this->assertDatabaseHas('warranty_codes', ['code' => $value, 'validity_months' => 4, 'is_active' => false]);
+        }
+
+        $duplicateUpload = new UploadedFile($sample, 'Warranty Codes.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
+        $this->actingAs($admin, 'admin')->post(route('admin.warranty-codes.import'), ['warranty_sheet' => $duplicateUpload])
+            ->assertSessionHasErrors(['warranty_sheet']);
+        $this->assertDatabaseCount('warranty_codes', 4);
     }
 
     public function test_registration_code_check_reports_every_availability_state(): void

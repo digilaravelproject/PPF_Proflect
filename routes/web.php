@@ -117,6 +117,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/warranty-codes', [AdminWarrantyCodeController::class, 'index'])->name('warranty-codes.index');
         Route::post('/warranty-codes', [AdminWarrantyCodeController::class, 'store'])->name('warranty-codes.store');
         Route::post('/warranty-codes/manual', [AdminWarrantyCodeController::class, 'storeManual'])->name('warranty-codes.store-manual');
+        Route::patch('/warranty-codes/expiration', [AdminWarrantyCodeController::class, 'updateExpiration'])->name('warranty-codes.expiration');
+        Route::post('/warranty-codes/import', [AdminWarrantyCodeController::class, 'import'])->name('warranty-codes.import');
+        Route::get('/warranty-codes/sample', [AdminWarrantyCodeController::class, 'downloadSample'])->name('warranty-codes.sample');
         Route::get('/warranty-codes/{warrantyCode}', [AdminWarrantyCodeController::class, 'show'])->name('warranty-codes.show');
         Route::patch('/warranty-codes/{warrantyCode}/toggle', [AdminWarrantyCodeController::class, 'toggle'])->name('warranty-codes.toggle');
         Route::delete('/warranty-codes/{warrantyCode}', [AdminWarrantyCodeController::class, 'destroy'])->name('warranty-codes.destroy');
