@@ -10,5 +10,3 @@
 <button class="button button--primary pay-now" data-payment-button data-plan-id="{{ $plan->id }}" data-order-url="{{ route('payments.order') }}">Pay {{ $plan->formatted_price }} securely <span>→</span></button>
 <p class="razorpay-config-note">You will continue to Stripe's secure hosted checkout.</p></section>
 <aside class="order-card"><span class="eyebrow">ORDER SUMMARY</span><div class="order-plan"><span class="plan-badge">{{ strtoupper(substr($plan->name,0,1)) }}</span><div><h3>{{ $plan->name }}</h3><p>{{ $plan->duration_label }} · {{ rtrim(rtrim($plan->coverage_sqm,'0'),'.') }} m² coverage</p></div></div><ul>@foreach($plan->features ?? [] as $feature)<li>✓ {{ $feature }}</li>@endforeach</ul><div class="price-line"><span>Plan price</span><b>{{ $plan->formatted_price }}</b></div><div class="price-line"><span>GST</span><b>Included</b></div><div class="price-line total"><span>Total payable</span><b>{{ $plan->formatted_price }}</b></div><small>One-time payment. No auto-renewal.</small></aside></div></main></body></html>
-
-\n

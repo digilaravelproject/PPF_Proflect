@@ -33,12 +33,27 @@ class SendCustomerLifecycleNotifications extends Command
             }
         });
 
-        $noticeDays = config('proflect.term_notice_days', 30);
-        Subscription::query()->with(['user', 'plan'])->where('status', 'active')->where('ends_at', '>', now())->where('ends_at', '<=', now()->addDays($noticeDays))->chunkById(100, function ($subscriptions) use ($notifications): void {
-            foreach ($subscriptions as $subscription) {
-                $notifications->send($subscription->user, 'term_expiry:'.$subscription->id, 'term_expiry', 'Your PCF cover is approaching expiry', "Your {$subscription->plan->name} expires on {$subscription->ends_at->format('d M Y')}. Renew to keep your coverage active.", route('subscription.index'), 'View protection plans');
-            }
-        });
+        foreach (config('proflect.term_notice_days', [60, 42, 30, 14, 7]) as $daysRemaining) {
+            $expiryDate = now()->addDays($daysRemaining)->toDateString();
+
+            Subscription::query()
+                ->with(['user', 'plan'])
+                ->where('status', 'active')
+                ->whereDate('ends_at', $expiryDate)
+                ->chunkById(100, function ($subscriptions) use ($notifications, $daysRemaining): void {
+                    foreach ($subscriptions as $subscription) {
+                        $notifications->send(
+                            $subscription->user,
+                            'term_expiry:'.$subscription->id.':'.$daysRemaining,
+                            'term_expiry',
+                            "Your PCF cover expires in {$daysRemaining} days",
+                            "Your {$subscription->plan->name} expires on {$subscription->ends_at->format('d M Y')}. Renew your Proflect Car Refresh Program (PCF) cover to remain protected.",
+                            route('subscription.index'),
+                            'View protection plans',
+                        );
+                    }
+                });
+        }
 
         $this->info('Customer lifecycle notifications processed.');
 

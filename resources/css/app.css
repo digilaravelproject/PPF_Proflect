@@ -190,6 +190,7 @@ body{background:#f7f5f0}
 .dashboard-body select option{color:#fff;background:#202020}
 .dashboard-body :is(.notification-dropdown,.notification-item button,.profile-dropdown){border-color:#383630;background:#191919;color:#fff}
 .dashboard-body .notification-item button:hover,.dashboard-body .profile-dropdown :is(a,button):hover{background:#292722}
+.dashboard-body .profile-dropdown :is(a,button){color:#fff;background:#191919}.dashboard-body .profile-dropdown form{border-color:#383630}
 .dashboard-body :is(.notification-dropdown small,.notification-item small,.notification-item time){color:#aaa59d}
 .dashboard-body :is(.registration-plate,.vehicle-count-badge,.warranty-code-box){border-color:#4a4439;background:#25231f;color:#f7f3ea}
 .dashboard-body .copy-code-btn,.dashboard-body .button--ghost,.dashboard-body .button--cancel{border-color:#5a554b;background:#252525;color:#fff}

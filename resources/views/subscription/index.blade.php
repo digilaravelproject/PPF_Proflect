@@ -22,5 +22,3 @@
     </article>@endforeach</div>@endif
     <div class="covered-grid"><div><i>✓</i><p><b>Covered</b><br>Approved accidental panel damage. Replacement includes PPF film and labour.</p></div><div><i>×</i><p><b>Not covered</b><br>Peeling and yellowing stay under standard warranty. Ceramic coating is excluded.</p></div><div><i>⌁</i><p><b>Simple claims</b><br>Submit panel damage online and track every update from your dashboard.</p></div></div>
 </main></body></html>
-
-\n

@@ -169,21 +169,27 @@ class WarrantyCodeAndNotificationTest extends TestCase
         $this->assertDatabaseHas('notifications', ['notifiable_id' => $user->id]);
     }
 
-    public function test_scheduled_day_14_offer_48_hour_and_term_notices_are_sent_once(): void
+    public function test_scheduled_offer_and_term_notices_are_sent_once(): void
     {
         Notification::fake();
         $day14 = User::factory()->create(['created_at' => now()->subDays(14)]);
         $expiringOffer = User::factory()->create(['created_at' => now()->subDays(29)]);
-        [$termUser, $subscription] = $this->customerWithSubscription();
-        $subscription->update(['ends_at' => now()->addDays(20)]);
+        $termUsers = collect([60, 42, 30, 14, 7])->map(function (int $days) {
+            [$user, $subscription] = $this->customerWithSubscription();
+            $subscription->update(['ends_at' => now()->addDays($days)]);
+
+            return [$days, $user];
+        });
 
         $this->artisan('proflect:send-lifecycle-notifications')->assertSuccessful();
         $this->artisan('proflect:send-lifecycle-notifications')->assertSuccessful();
 
         Notification::assertSentTo($day14, CustomerEventNotification::class, fn ($notification) => $notification->event === 'offer_day_14');
         Notification::assertSentTo($expiringOffer, CustomerEventNotification::class, fn ($notification) => $notification->event === 'offer_48_hours');
-        Notification::assertSentTo($termUser, CustomerEventNotification::class, fn ($notification) => $notification->event === 'term_expiry');
-        $this->assertDatabaseCount('customer_notification_events', 4);
+        foreach ($termUsers as [$days, $user]) {
+            Notification::assertSentTo($user, CustomerEventNotification::class, fn ($notification) => $notification->event === 'term_expiry' && str_contains($notification->title, "{$days} days"));
+        }
+        $this->assertDatabaseCount('customer_notification_events', 8);
     }
 
     private function customerWithSubscription(): array
