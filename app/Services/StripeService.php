@@ -35,7 +35,7 @@ class StripeService
                     'unit_amount' => $plan->price,
                     'product_data' => [
                         'name' => $plan->name,
-                        'description' => 'Proflect PPF Replacement Program · '.$plan->duration_label,
+                        'description' => 'Proflect Car Refresh Program (PCF) · '.$plan->duration_label,
                     ],
                 ],
             ]],

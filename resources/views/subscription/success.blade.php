@@ -13,7 +13,7 @@
     <div class="success-check">✓</div>
     <span class="eyebrow">{{ $subscription->plan->is_free ? 'SUBSCRIPTION SUMMARY' : 'PAYMENT SUMMARY' }}</span>
     <h1>You’re Protected!</h1>
-    <p>Your PPF replacement program is now active.</p>
+    <p>Your Proflect Car Refresh Program (PCF) is now active.</p>
     <section class="confirmation-plan">
         <div class="confirmation-plan__title">
             <span class="plan-badge">{{ strtoupper(substr($subscription->plan->name,0,1)) }}</span>

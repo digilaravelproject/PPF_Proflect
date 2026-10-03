@@ -38,7 +38,7 @@ class CustomerNotificationService
     public function registration(User $user): void
     {
         $days = config('proflect.offer_duration_days', 30);
-        $this->send($user, 'registration', 'registration', 'Warranty registered — your replacement offer is ready', "Welcome to Proflect. Your warranty is registered and your PPF Replacement Program offer is available for {$days} days.", route('subscription.index'), 'View your offer', [], false);
+        $this->send($user, 'registration', 'registration', 'Warranty registered — your PCF offer is ready', "Welcome to Proflect. Your warranty is registered and your Proflect Car Refresh Program (PCF) offer is available for {$days} days.", route('subscription.index'), 'View your offer', [], false);
     }
 
     public function paymentSuccessful(Payment $payment, Subscription $subscription): bool
@@ -47,7 +47,7 @@ class CustomerNotificationService
             $payment->user,
             'payment_success:'.$payment->id,
             'payment_success',
-            'Program activated — payment successful',
+            'PCF activated — payment successful',
             "Your {$payment->plan->name} is active. Your tax invoice and warranty certificate are ready to download.",
             route('documents.index'),
             'View documents',

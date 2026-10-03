@@ -3,7 +3,7 @@
 <head><link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Proflect · PPF Replacement Program</title>
+    <title>Proflect · Car Refresh Program (PCF)</title>
     @vite(['resources/css/app.css', 'resources/css/auth-shade.css', 'resources/js/app.js'])
 </head>
 <body class="landing-body">
@@ -19,12 +19,12 @@
             <img src="{{ asset('images/rolls-royce-spectre-series-ii-hero.png') }}" alt="Black Rolls-Royce Spectre Series II protected by Proflect">
             <div class="landing-hero__shade"></div>
             <div class="landing-hero__copy">
-                <span>PPF REPLACEMENT PROGRAM</span>
+                <span>PROFLECT CAR REFRESH PROGRAM · PCF</span>
                 <h1>Premium PPF for a cleaner, brighter tomorrow.</h1>
                 <p>Protect your vehicle. Enhance its beauty. Get straightforward replacement support when eligible film is damaged.</p>
-                <div class="landing-hero__actions"><a class="button button--light" href="{{ route('register') }}">Get protected <b>→</b></a><a class="landing-text-link" href="#benefits">Explore the program</a></div>
+                <div class="landing-hero__actions"><a class="button button--light" href="{{ route('register') }}">Get protected <b>→</b></a><a class="landing-text-link" href="#benefits">Explore PCF</a></div>
             </div>
-            <div class="landing-teaser"><span class="landing-teaser__icon">◇</span><div><b>Add extra peace of mind</b><p>Ask about the Proflect PPF Replacement Program within 30 days.</p><a href="{{ route('register') }}">Learn more →</a></div></div>
+            <div class="landing-teaser"><span class="landing-teaser__icon">◇</span><div><b>Add extra peace of mind</b><p>Ask about the Proflect Car Refresh Program (PCF) within 30 days.</p><a href="{{ route('register') }}">Learn more →</a></div></div>
         </section>
         <section class="landing-benefits" id="benefits">
             <div><span class="eyebrow">BUILT AROUND YOUR VEHICLE</span><h2>Protection made simple.</h2></div>

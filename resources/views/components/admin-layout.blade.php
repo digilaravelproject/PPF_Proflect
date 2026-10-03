@@ -8,7 +8,7 @@
         <a class="{{ request()->routeIs('admin.dashboard')?'active':'' }}" href="{{ route('admin.dashboard') }}"><span>⌂</span>Dashboard</a>
         <a class="{{ request()->routeIs('admin.customers.*')?'active':'' }}" href="{{ route('admin.customers.index') }}"><span>♙</span>Customers</a>
         <a class="{{ request()->routeIs('admin.vehicles.*')?'active':'' }}" href="{{ route('admin.vehicles.index') }}"><span>▱</span>Manage Vehicles</a>
-        <a class="{{ request()->routeIs('admin.payments.*')?'active':'' }}" href="{{ route('admin.payments.index') }}"><span>◇</span>Program Enrolments</a>
+        <a class="{{ request()->routeIs('admin.payments.*')?'active':'' }}" href="{{ route('admin.payments.index') }}"><span>◇</span>PCF Enrolments</a>
         <a class="{{ request()->routeIs('admin.claims.*')?'active':'' }}" href="{{ route('admin.claims.index') }}"><span>▣</span>Claims</a>
         <a class="{{ request()->routeIs('admin.warranty-codes.*')?'active':'' }}" href="{{ route('admin.warranty-codes.index') }}"><span>⌁</span>Warranty Codes</a>
         <a class="{{ request()->routeIs('admin.reports.*')?'active':'' }}" href="{{ route('admin.reports.index') }}"><span>▤</span>Reports</a>

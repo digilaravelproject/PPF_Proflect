@@ -166,4 +166,65 @@ body{background:#f7f5f0}
 .landing-hero>img{object-position:center}
 .ppf-code-card__number img{width:64px;height:64px}
 
-\n
+/* Unified Proflect black-and-gold portal theme */
+.dashboard-body,.auth-body,.admin-login-body,.offer-body,.checkout-body,.success-body{--ink:#f7f3ea;--muted:#aaa59d;--line:#383630;--soft:#1c1b19;--green:#dba342;--shadow:0 24px 70px rgba(0,0,0,.38);color:var(--ink);background:#090909;color-scheme:dark}
+.dashboard-body,.dashboard-main,.customer-main,.customer-page-head,.dashboard-content,.offer-main,.checkout-shell{background:#090909}
+.dashboard-body .topbar,.dashboard-body .customer-page-head{border-color:#2f2d29;background:#101010}
+.dashboard-body .topbar h1,.dashboard-body .customer-page-head h1,.dashboard-body h2,.dashboard-body h3,.dashboard-body h4,.dashboard-body b,.dashboard-body strong,.dashboard-body label,.dashboard-body td,.dashboard-body .coverage-labels b,.dashboard-body .detail-row b{color:#f7f3ea}
+.dashboard-body p,.dashboard-body small,.dashboard-body .form-page-heading p,.dashboard-body .welcome-row p{color:#aaa59d}
+.dashboard-body .eyebrow,.dashboard-body .topbar__kicker,.offer-body .eyebrow,.checkout-body .eyebrow{color:#e3b75d}
+.sidebar{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#b6812d #111}
+.sidebar::-webkit-scrollbar{width:7px}.sidebar::-webkit-scrollbar-track{background:#111}.sidebar::-webkit-scrollbar-thumb{border:2px solid #111;border-radius:10px;background:#b6812d}
+.admin-sidebar{background:linear-gradient(180deg,#090909,#171511)}
+.admin-sidebar .sidebar__brand{flex:0 0 auto}.admin-sidebar .sidebar__nav{flex:0 0 auto}.admin-sidebar>form{margin-top:auto;flex:0 0 auto;padding-top:18px}
+.sidebar__nav a:hover,.sidebar__nav a.active{background:#2b2925}.sidebar__nav a.active{box-shadow:inset 3px 0 #dba342}.sidebar__logout{color:#d5d0c7}
+.dashboard-body :is(.panel,.warranty-card,.admin-stats article,.admin-table-wrap,.overview-stats article,.dashboard-warranty-card,.manual-code-form,.warranty-sheet-panel,.review-grid article,.claim-summary-grid>div,.claim-meta-grid>div,.confirmation-shell,.confirmation-plan,.vehicle-credits-notices,.admin-panel-review){border-color:#383630;background:#171717;color:#f7f3ea;box-shadow:none}
+.dashboard-body :is(.warranty-card__footer,.admin-table th,.confirmation-details){border-color:#383630;background:#20201e;color:#ddd8cf}
+.dashboard-body :is(.action-list__icon,.overview-stat-icon,.activity-icon,.form-icon,.upload-icon){color:#e3b75d;background:#2c261b}
+.dashboard-body :is(.action-list__icon--green,.button--approve){color:#171109;background:#dba342}
+.dashboard-body :is(.protected-note,.review-notice,.confirmation-note,.warranty-code-field){border-color:#544425;background:#242019;color:#d9d3c9}
+.dashboard-body .coverage-ring:before,.dashboard-body .status-donut:before{background:#171717}
+.dashboard-body .coverage-ring,.dashboard-body .coverage-bar{background:#34322d}
+.dashboard-body :is(.field__control,.admin-form textarea,.upload-stage textarea,.decision-card textarea,.admin-form select,.admin-filters select,.manual-code-form select,.code-generator select,.expiration-setting select,.vehicle-fields select){border-color:#45423c;background:#202020;color:#fff}
+.dashboard-body :is(input,textarea,select){color:#fff}.dashboard-body :is(input,textarea)::placeholder{color:#77736c}
+.dashboard-body select option{color:#fff;background:#202020}
+.dashboard-body :is(.notification-dropdown,.notification-item button,.profile-dropdown){border-color:#383630;background:#191919;color:#fff}
+.dashboard-body .notification-item button:hover,.dashboard-body .profile-dropdown :is(a,button):hover{background:#292722}
+.dashboard-body :is(.notification-dropdown small,.notification-item small,.notification-item time){color:#aaa59d}
+.dashboard-body :is(.registration-plate,.vehicle-count-badge,.warranty-code-box){border-color:#4a4439;background:#25231f;color:#f7f3ea}
+.dashboard-body .copy-code-btn,.dashboard-body .button--ghost,.dashboard-body .button--cancel{border-color:#5a554b;background:#252525;color:#fff}
+.dashboard-body .alert--success{border-color:#806329;background:#2a2418;color:#f1c765}
+.dashboard-body .admin-error,.dashboard-body .payment-error{border-color:#744;background:#2b1717;color:#ffb1b1}
+.dashboard-body :is(.table-status.inactive,.claim-status--inactive,.claim-status--deleted){color:#d1cdc5;background:#363432}
+.dashboard-body :is(.table-status.active,.claim-status--approved,.claim-status--available){color:#f0c76f;background:#352b17}
+.dashboard-body :is(.claim-status--pending,.claim-status--expired){color:#ffd985;background:#4a3514}
+.dashboard-body .claim-status--disapproved{color:#ffb2b2;background:#481f1f}
+.dashboard-body .bar-chart{background:repeating-linear-gradient(to top,transparent 0,transparent 51px,#292824 52px)}
+.dashboard-body .activity-list>a,.dashboard-body .notification-item,.dashboard-body .action-list,.dashboard-body .action-list a{border-color:#383630}
+.dashboard-body .customer-navbar{background:linear-gradient(135deg,#080808,#1d1a15);border-bottom:1px solid #332f28}
+.dashboard-body .profile-menu__avatar{color:#171109;background:linear-gradient(135deg,#b77c22,#efc66c)}
+.dashboard-body .navbar-profile>button{color:#fff}.dashboard-body .navbar-profile small{color:#aaa59d}
+.dashboard-body .admin-dashboard-hero,.dashboard-body .overview-hero{background:radial-gradient(circle at 82% 25%,rgba(219,163,66,.22),transparent 30%),linear-gradient(115deg,#111,#242019)}
+.dashboard-body .overview-hero .button{color:#171109;background:linear-gradient(110deg,#ac711d,#efbf67)}
+.auth-body .auth-panel,.admin-login-body .admin-login-panel{background:#111;color:#f7f3ea}
+.auth-body .auth-visual,.admin-login-body .admin-login-brand{background:radial-gradient(circle at 72% 68%,#302719,#15130f 42%,#070707)}
+.auth-body :is(.field__control,.trust-note),.admin-login-body .field__control{border-color:#45423c;background:#202020;color:#fff}
+.auth-body :is(input,select),.admin-login-body input{color:#fff}.auth-body input::placeholder,.admin-login-body input::placeholder{color:#77736c}
+.auth-body :is(.form-heading p,.check-row,.form-switch,.help-note,.auth-copyright),.admin-login-body :is(.admin-login-card>p,.check-row,.admin-back){color:#aaa59d}
+.auth-body .trust-note{background:#242019}.auth-body .trust-note b{color:#fff}
+.admin-login-body .admin-login-card{border:1px solid #302e29;border-radius:14px;padding:34px;background:#171717;box-shadow:0 24px 70px rgba(0,0,0,.38)}
+.offer-body,.checkout-body,.success-body{background:#090909}
+.offer-body :is(.plan-card,.empty-state),.checkout-body :is(.pay-method,.secure-box,.order-card),.success-body :is(.success-card,.confirmation-shell){border-color:#383630;background:#171717;color:#f7f3ea;box-shadow:none}
+.offer-body .plan-card--gold{background:linear-gradient(150deg,#1a1916,#272014)}
+.offer-body :is(.plan-card>p,.plan-price span,.skip-button,.stepper),.checkout-body :is(.checkout-lead,.pay-method p,.secure-box,.order-card p,.order-card small),.success-body p{color:#aaa59d}
+.offer-body .stepper i,.checkout-body .stepper i{background:#33312d}.offer-body .stepper b,.checkout-body .stepper b{background:#48443d}
+.offer-body .stepper span.active,.offer-body .stepper span.done,.checkout-body .stepper span.active,.checkout-body .stepper span.done{color:#fff}
+.checkout-body .simple-header,.offer-body .offer-header{background:#0d0d0d;border-bottom:1px solid #332f28}
+.checkout-body .simple-header .brand{color:#fff}
+.checkout-body .secure-box{background:#242019}.checkout-body .order-card ul{color:#d4cfc6}
+.success-body{background:radial-gradient(circle,#211c13,#090909 65%)}.success-body .confirmation-details,.success-body .success-plan{background:#23211d}.success-body .brand{color:#fff}
+.landing-body,.legal-body{--ink:#f7f3ea;--muted:#aaa59d;--line:#383630;--green:#dba342;color:#f7f3ea;background:#080808;color-scheme:dark}
+.landing-body :is(.landing-benefits,.landing-support){color:#f7f3ea;background:#111}
+.landing-body .landing-benefits article{border-color:#383630}.landing-body :is(.landing-benefits p,.landing-support p){color:#aaa59d}
+.landing-body .button--light{color:#171109;background:linear-gradient(110deg,#ac711d,#efbf67)}
+.legal-body .legal-header{border-color:#332f28;background:#0d0d0d}.legal-body .legal-content{color:#f7f3ea;background:#111}.legal-body :is(p,.legal-intro,.legal-updated){color:#aaa59d}.legal-body h1,.legal-body h2{color:#fff}

@@ -1,5 +1,5 @@
 <x-admin-layout title="Dashboard">
-    <section class="admin-dashboard-hero"><div><span class="eyebrow">PROGRAM COMMAND CENTRE</span><h2>Good day, {{ explode(' ',auth('admin')->user()->name)[0] }}.</h2><p>Monitor customers, revenue, subscriptions and claims from one place.</p></div><div class="admin-dashboard-hero__actions"><a href="{{ route('admin.reports.index') }}" class="button button--cancel">Export reports</a><a href="{{ route('admin.plans.create') }}" class="button button--dark">Add new plan <span>+</span></a></div></section>
+    <section class="admin-dashboard-hero"><div><span class="eyebrow">PCF COMMAND CENTRE</span><h2>Good day, {{ explode(' ',auth('admin')->user()->name)[0] }}.</h2><p>Monitor customers, revenue, subscriptions and claims from one place.</p></div><div class="admin-dashboard-hero__actions"><a href="{{ route('admin.reports.index') }}" class="button button--cancel">Export reports</a><a href="{{ route('admin.plans.create') }}" class="button button--dark">Add new plan <span>+</span></a></div></section>
 
     <div class="admin-stats admin-dashboard-stats">
         <article><span class="stat-icon stat-blue">♙</span><div><p>Total customers</p><b>{{ number_format($customers) }}</b><small>+{{ $newCustomers }} in the last 30 days</small></div></article>
