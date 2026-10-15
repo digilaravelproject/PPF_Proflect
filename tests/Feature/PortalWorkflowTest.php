@@ -132,7 +132,7 @@ class PortalWorkflowTest extends TestCase
         Mail::assertSent(PaymentSuccessfulMail::class, fn ($mail) => $mail->warrantyCode->id === $issuedCode->id && str_contains($mail->render(), $issuedCode->code));
         Mail::assertNotSent(WarrantyCodeMail::class);
         $this->actingAs($user)->get(route('dashboard'))->assertOk()->assertSee('Warranty card')->assertSee($issuedCode->code)->assertDontSee('YOUR WARRANTY CODE');
-        $this->actingAs($user)->get(route('warranty.show'))->assertOk()->assertSee($issuedCode->code);
+        $this->actingAs($user)->get(route('warranty.show'))->assertOk()->assertDontSee('YOUR WARRANTY CODE')->assertDontSee($issuedCode->code);
         $this->actingAs($user)->post(route('warranty-code.email'))->assertSessionHas('status');
         Mail::assertSent(WarrantyCodeMail::class, fn ($mail) => $mail->warrantyCode->id === $issuedCode->id && str_contains($mail->render(), $issuedCode->code));
         $this->assertDatabaseCount('warranty_codes', 1);

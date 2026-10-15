@@ -14,10 +14,6 @@ class ClaimWarrantyController extends Controller
 {
     public function create(Request $request): View|RedirectResponse
     {
-        if (! $request->user()->claims()->exists()) {
-            return redirect()->route('claims.create');
-        }
-
         return view('claims.warranty-code');
     }
 
@@ -37,10 +33,6 @@ class ClaimWarrantyController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        if (! $request->user()->claims()->exists()) {
-            return redirect()->route('claims.create');
-        }
-
         $validated = $request->validate(['warranty_code' => ['required', 'digits:5']]);
 
         DB::transaction(function () use ($request, $validated): void {
@@ -60,9 +52,7 @@ class ClaimWarrantyController extends Controller
             ]);
         });
 
-        $request->session()->put('claim_subscription_flow', true);
-
-        return redirect()->route('subscription.index')->with('status', 'Warranty code verified. Choose a new subscription for your next claim.');
+        return redirect()->route('dashboard')->with('status', 'Warranty card added. You can select it when making a claim.');
     }
 
     private function availabilityResponse(WarrantyCode $code): array

@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\PasswordResetController as AdminPasswordResetController;
 use App\Http\Controllers\Admin\PaymentController as AdminPaymentController;
 use App\Http\Controllers\Admin\PlanController as AdminPlanController;
+use App\Http\Controllers\Admin\PpfVariantController as AdminPpfVariantController;
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
 use App\Http\Controllers\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Admin\VehicleController as AdminVehicleController;
@@ -69,6 +70,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/subscription/skip', [SubscriptionController::class, 'skip'])->name('subscription.skip');
     Route::post('/payments/order', [PaymentController::class, 'order'])->middleware('throttle:10,1')->name('payments.order');
     Route::get('/payments/stripe/complete', [PaymentController::class, 'complete'])->middleware('throttle:15,1')->name('payments.complete');
+    Route::post('/payments/afterpay/order', [PaymentController::class, 'afterpayOrder'])->middleware('throttle:10,1')->name('payments.afterpay.order');
+    Route::get('/payments/afterpay/complete', [PaymentController::class, 'afterpayComplete'])->middleware('throttle:15,1')->name('payments.afterpay.complete');
+    Route::get('/payments/afterpay/cancel', [PaymentController::class, 'afterpayCancel'])->middleware('throttle:15,1')->name('payments.afterpay.cancel');
     Route::get('/subscription/success', [PaymentController::class, 'success'])->name('subscription.success');
 
     Route::middleware('onboarded')->group(function () {
@@ -85,6 +89,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/my-vehicles', [DashboardController::class, 'vehicles'])->name('vehicles.index');
         Route::get('/my-warranty', [DashboardController::class, 'warranty'])->name('warranty.show');
         Route::get('/claims', [ClaimController::class, 'index'])->name('claims.index');
+        Route::post('/claims/{claim}/subscribe', [ClaimController::class, 'subscribe'])->name('claims.subscribe');
         Route::get('/catalog/makes/{make}/models', [VehicleCatalogController::class, 'models'])->name('catalog.make.models');
         Route::get('/catalog/models/{model}', [VehicleCatalogController::class, 'show'])->name('catalog.model.show');
         Route::get('/claims/{claim}', [ClaimController::class, 'show'])->name('claims.show');
@@ -115,6 +120,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::patch('/vehicles/{vehicle}/toggle', [AdminVehicleController::class, 'toggle'])->name('vehicles.toggle');
         Route::resource('vehicles.models', AdminVehicleModelController::class)->except('index')->parameters(['vehicles' => 'vehicle', 'models' => 'model']);
         Route::patch('/vehicles/{vehicle}/models/{model}/toggle', [AdminVehicleModelController::class, 'toggle'])->name('vehicles.models.toggle');
+        Route::resource('ppf-variants', AdminPpfVariantController::class)->only(['index', 'store', 'update', 'destroy'])->parameters(['ppf-variants' => 'ppfVariant']);
+        Route::patch('/ppf-variants/{ppfVariant}/toggle', [AdminPpfVariantController::class, 'toggle'])->name('ppf-variants.toggle');
         Route::get('/claims/report', [AdminClaimController::class, 'report'])->name('claims.report');
         Route::get('/claims/{claim}/photos/{index}', [AdminClaimController::class, 'photo'])->whereNumber('index')->name('claims.photo');
         Route::get('/claims/{claim}/model-photo', [AdminClaimController::class, 'modelPhoto'])->name('claims.model-photo');

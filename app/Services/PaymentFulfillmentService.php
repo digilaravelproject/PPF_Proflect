@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Mail\PaymentSuccessfulMail;
 use App\Models\Payment;
+use App\Models\Claim;
 use App\Models\Subscription;
 use App\Models\WarrantyCode;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,7 @@ class PaymentFulfillmentService
     public function __construct(
         private readonly CustomerNotificationService $notifications,
         private readonly WarrantyCodeService $codes,
+        private readonly PendingClaimService $pendingClaims,
     ) {}
 
     public function fulfill(Payment $payment, array $gatewayPayment): Subscription
@@ -28,10 +30,10 @@ class PaymentFulfillmentService
             }
 
             $locked->update([
-                'gateway_payment_id' => $gatewayPayment['payment_intent_id'],
+                'gateway_payment_id' => $gatewayPayment['gateway_payment_id'] ?? $gatewayPayment['payment_intent_id'],
                 'status' => 'paid',
                 'paid_at' => now(),
-                'metadata' => ['method' => $gatewayPayment['method']],
+                'metadata' => array_merge($locked->metadata ?? [], ['method' => $gatewayPayment['method']]),
             ]);
 
             $subscription = Subscription::create([
@@ -43,8 +45,10 @@ class PaymentFulfillmentService
                 'ends_at' => $locked->plan->subscriptionEndsAt(),
             ]);
             $locked->user()->update(['onboarding_completed_at' => now()]);
-            WarrantyCode::query()->where('used_by_user_id', $locked->user_id)->whereNull('subscription_id')
-                ->latest('used_at')->limit(1)->update(['subscription_id' => $subscription->id]);
+            if (! Claim::query()->where('user_id', $locked->user_id)->where('status', 'awaiting_subscription')->exists()) {
+                WarrantyCode::query()->where('used_by_user_id', $locked->user_id)->whereNull('subscription_id')
+                    ->latest('used_at')->limit(1)->update(['subscription_id' => $subscription->id]);
+            }
 
             return $subscription;
         });
@@ -65,6 +69,7 @@ class PaymentFulfillmentService
             }
         }
 
+        $this->pendingClaims->finalizeFor($subscription, isset($paidPayment->metadata['pending_claim_id']) ? (int) $paidPayment->metadata['pending_claim_id'] : null);
         return $subscription;
     }
 }

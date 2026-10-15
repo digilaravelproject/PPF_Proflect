@@ -89,22 +89,27 @@ class ClaimWorkflowTest extends TestCase
         $this->actingAs($user)->postJson(route('claims.warranty.check'), ['warranty_code' => $code->code])
             ->assertOk()->assertJson(['valid' => true]);
         $this->actingAs($user)->post(route('claims.warranty.store'), ['warranty_code' => $code->code])
-            ->assertRedirect(route('subscription.index'))
-            ->assertSessionHas('claim_subscription_flow', true);
+            ->assertRedirect(route('dashboard'));
+        $this->actingAs($user)->get(route('dashboard'))->assertSee($code->code)->assertSee('Available');
 
         $secondSubscription = Subscription::create([
             'user_id' => $user->id, 'plan_id' => $plan->id, 'status' => 'active',
             'starts_at' => now(), 'ends_at' => now()->addYear(),
         ]);
-        $code->refresh()->update(['subscription_id' => $secondSubscription->id]);
-
-        $this->actingAs($user)->get(route('claims.create'))->assertOk();
+        $this->actingAs($user)->get(route('claims.create'))->assertOk()->assertSee($code->code);
         $this->actingAs($user)->post(route('claims.store'), [
             'vehicle_make' => 'Toyota', 'vehicle_model' => 'Fortuner', 'registration_number' => 'MH12AB1234',
-            'panels' => ['roof'], 'photos' => [UploadedFile::fake()->image('second-damage.jpg')],
-        ])->assertRedirect();
+            'warranty_code_id' => $code->id, 'panels' => ['roof'], 'photos' => [UploadedFile::fake()->image('second-damage.jpg')],
+        ])->assertRedirect(route('subscription.index'));
 
-        $secondClaim = Claim::latest('id')->firstOrFail();
+        $draft = Claim::latest('id')->firstOrFail();
+        $this->assertSame('awaiting_subscription', $draft->status);
+        $this->actingAs($user)->get(route('dashboard'))->assertSee('Subscription pending')->assertDontSee('>Used<', false);
+        $this->actingAs($user)->get(route('claims.index'))->assertOk()->assertSee('Subscription required')->assertSee('Subscribe');
+        $this->actingAs($user)->post(route('claims.subscribe', $draft))->assertRedirect(route('subscription.index'))->assertSessionHas('pending_claim_id', $draft->id);
+        app(\App\Services\PendingClaimService::class)->finalizeFor($secondSubscription);
+
+        $secondClaim = $draft->fresh();
         $this->assertSame($secondSubscription->id, $secondClaim->subscription_id);
         $this->assertSame($code->id, $secondClaim->warranty_code_id);
         $this->assertDatabaseCount('claims', 2);

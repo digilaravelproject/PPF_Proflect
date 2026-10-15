@@ -210,6 +210,21 @@ if (document.querySelector('.sidebar') && !document.querySelector('.menu-button'
 }
 
 document.querySelectorAll('[data-payment-button]').forEach((button) => {
+    const methods = document.querySelector('[data-payment-methods]');
+    const note = document.querySelector('[data-payment-note]');
+    const selectedMethod = () => methods?.querySelector('[name="payment_method"]:checked')?.value || 'stripe';
+    const syncMethod = () => {
+        const method = selectedMethod();
+        methods?.querySelectorAll('.pay-method').forEach((option) => {
+            option.classList.toggle('is-selected', option.querySelector('input')?.checked);
+        });
+        button.innerHTML = `Pay ${button.dataset.amount || ''} with ${method === 'afterpay' ? 'Afterpay' : 'Stripe'} <span>→</span>`;
+        if (note) note.textContent = `You will continue to ${method === 'afterpay' ? "Afterpay's" : "Stripe's"} secure hosted checkout.`;
+    };
+    button.dataset.amount = button.textContent.match(/^Pay\s+(.+?)\s+with\s+/)?.[1] || '';
+    methods?.addEventListener('change', syncMethod);
+    syncMethod();
+
     button.addEventListener('click', async () => {
         const errorBox = document.getElementById('payment-error');
         const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -222,11 +237,13 @@ document.querySelectorAll('[data-payment-button]').forEach((button) => {
         };
 
         button.disabled = true;
-        button.textContent = 'Preparing secure checkout…';
+        const method = selectedMethod();
+        button.textContent = `Preparing ${method === 'afterpay' ? 'Afterpay' : 'Stripe'} checkout…`;
         errorBox.hidden = true;
 
         try {
-            const orderResponse = await fetch(button.dataset.orderUrl, {
+            const orderUrl = method === 'afterpay' ? button.dataset.afterpayOrderUrl : button.dataset.stripeOrderUrl;
+            const orderResponse = await fetch(orderUrl, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf},
                 body: JSON.stringify({plan_id: Number(button.dataset.planId)}),
@@ -234,10 +251,10 @@ document.querySelectorAll('[data-payment-button]').forEach((button) => {
             const order = await orderResponse.json();
             if (!orderResponse.ok) throw new Error(order.message || 'Unable to prepare the payment.');
 
-            if (!order.checkout_url) throw new Error('Stripe did not return a secure checkout URL.');
+            if (!order.checkout_url) throw new Error('The payment provider did not return a secure checkout URL.');
             window.location.assign(order.checkout_url);
         } catch (error) {
-            showError(error.message || 'Unable to open Stripe Checkout.');
+            showError(error.message || 'Unable to open secure checkout.');
         }
     });
 });

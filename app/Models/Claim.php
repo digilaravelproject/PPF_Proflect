@@ -20,7 +20,7 @@ class Claim extends Model
         'other' => 'Other',
     ];
 
-    protected $fillable = ['claim_number', 'user_id', 'subscription_id', 'warranty_code_id', 'vehicle_make', 'vehicle_model', 'vehicle_model_id', 'vehicle_model_photo_path', 'registration_number', 'vehicle_year', 'panels', 'panel_details', 'model_coverage_sqm', 'photos', 'description', 'status', 'admin_notes', 'reviewed_at', 'booking_date', 'available_date'];
+    protected $fillable = ['claim_number', 'user_id', 'subscription_id', 'warranty_code_id', 'ppf_variant_id', 'vehicle_make', 'vehicle_model', 'vehicle_model_id', 'vehicle_model_photo_path', 'registration_number', 'vehicle_year', 'panels', 'panel_details', 'model_coverage_sqm', 'photos', 'description', 'status', 'admin_notes', 'reviewed_at', 'booking_date', 'available_date'];
 
     protected function casts(): array
     {
@@ -51,4 +51,6 @@ class Claim extends Model
     {
         return $this->belongsTo(VehicleModel::class);
     }
+
+    public function ppfVariant(): BelongsTo { return $this->belongsTo(PpfVariant::class); }
 }

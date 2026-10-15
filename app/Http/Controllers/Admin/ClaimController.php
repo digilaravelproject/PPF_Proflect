@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Claim;
+use App\Models\PpfVariant;
 use App\Services\CustomerNotificationService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
@@ -25,7 +26,7 @@ class ClaimController extends Controller
 
     public function show(Claim $claim): View
     {
-        $claim->load(['user', 'subscription.plan', 'warrantyCode', 'vehicleModel.panels']);
+        $claim->load(['user', 'subscription.plan', 'warrantyCode', 'vehicleModel.panels', 'ppfVariant']);
         $snapshot = $claim->vehicle_model_photo_path && Storage::disk('public')->exists($claim->vehicle_model_photo_path);
         $currentPhoto = $claim->vehicleModel?->photo_path && Storage::disk('public')->exists($claim->vehicleModel->photo_path);
         $photoUrl = $snapshot ? route('admin.claims.model-photo', $claim)
@@ -38,7 +39,7 @@ class ClaimController extends Controller
         })->filter()->values();
 
         return view('admin.claims.show', ['claim' => $claim, 'panels' => Claim::PANELS,
-            'vehiclePhotoUrl' => $photoUrl, 'selectedAreas' => $selectedAreas]);
+            'vehiclePhotoUrl' => $photoUrl, 'selectedAreas' => $selectedAreas, 'ppfVariants' => PpfVariant::where('is_active', true)->orderBy('name')->get()]);
     }
 
     public function update(Request $request, Claim $claim, CustomerNotificationService $notifications): RedirectResponse
@@ -47,12 +48,13 @@ class ClaimController extends Controller
             'status' => ['required', Rule::in(['approved', 'disapproved'])],
             'admin_notes' => ['nullable', 'required_if:status,disapproved', 'string', 'max:2000'],
             'booking_date' => ['nullable', 'date', 'after_or_equal:today'],
+            'ppf_variant_id' => ['nullable', Rule::requiredIf($request->input('status') === 'approved' && PpfVariant::where('is_active', true)->exists()), Rule::exists('ppf_variants', 'id')->where('is_active', true)],
         ]);
         $bookingDate = $validated['booking_date'] ?? ($claim->available_date?->isToday() || $claim->available_date?->isFuture() ? $claim->available_date->toDateString() : null);
         if ($validated['status'] === 'approved' && ! $bookingDate) {
             throw ValidationException::withMessages(['booking_date' => 'Choose a booking date or ask the customer for a new available date.']);
         }
-        $claim->update(array_merge($validated, ['booking_date' => $validated['status'] === 'approved' ? $bookingDate : null, 'reviewed_at' => now()]));
+        $claim->update(array_merge($validated, ['booking_date' => $validated['status'] === 'approved' ? $bookingDate : null, 'ppf_variant_id' => $validated['status'] === 'approved' ? ($validated['ppf_variant_id'] ?? null) : null, 'reviewed_at' => now()]));
         $notifications->claimDecision($claim->fresh('user'));
 
         return back()->with('status', 'Claim marked as '.$validated['status'].'.');
@@ -97,7 +99,7 @@ class ClaimController extends Controller
             'to' => ['nullable', 'date', 'after_or_equal:from'],
         ]);
 
-        return Claim::query()->with(['user', 'subscription.plan', 'warrantyCode'])
+        return Claim::query()->where('status', '!=', 'awaiting_subscription')->with(['user', 'subscription.plan', 'warrantyCode', 'ppfVariant'])
             ->when($request->filled('search'), function (Builder $query) use ($request): void {
                 $search = trim($request->string('search')->toString());
                 $query->where(fn (Builder $query) => $query->where('claim_number', 'like', "%{$search}%")

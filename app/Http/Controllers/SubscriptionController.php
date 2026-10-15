@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Mail\PaymentSuccessfulMail;
 use App\Models\Payment;
+use App\Models\Claim;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\WarrantyCode;
 use App\Services\CustomerNotificationService;
 use App\Services\WarrantyCodeService;
+use App\Services\PendingClaimService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -42,11 +44,12 @@ class SubscriptionController extends Controller
         return view('subscription.checkout', compact('plan'));
     }
 
-    public function activateFree(Request $request, Plan $plan, CustomerNotificationService $notifications, WarrantyCodeService $codes): RedirectResponse
+    public function activateFree(Request $request, Plan $plan, CustomerNotificationService $notifications, WarrantyCodeService $codes, PendingClaimService $pendingClaims): RedirectResponse
     {
         abort_unless($plan->is_active && $plan->is_free && $plan->duration_days, 404);
 
-        $subscription = DB::transaction(function () use ($request, $plan): Subscription {
+        $pendingClaimId = $request->session()->get('pending_claim_id');
+        $subscription = DB::transaction(function () use ($request, $plan, $pendingClaimId): Subscription {
             $user = $request->user()->newQuery()->whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
             $alreadyClaimed = Subscription::query()
                 ->where('user_id', $user->id)
@@ -63,7 +66,7 @@ class SubscriptionController extends Controller
                     'currency' => $plan->currency,
                     'status' => 'paid',
                     'paid_at' => now(),
-                    'metadata' => ['method' => 'free_plan'],
+                    'metadata' => ['method' => 'free_plan', 'pending_claim_id' => $pendingClaimId],
                 ]);
                 $subscription = Subscription::create([
                     'user_id' => $user->id,
@@ -78,8 +81,10 @@ class SubscriptionController extends Controller
             }
 
             $user->update(['onboarding_completed_at' => now()]);
-            WarrantyCode::query()->where('used_by_user_id', $user->id)->whereNull('subscription_id')
-                ->latest('used_at')->limit(1)->update(['subscription_id' => $subscription->id]);
+            if (! Claim::query()->where('user_id', $user->id)->where('status', 'awaiting_subscription')->exists()) {
+                WarrantyCode::query()->where('used_by_user_id', $user->id)->whereNull('subscription_id')
+                    ->latest('used_at')->limit(1)->update(['subscription_id' => $subscription->id]);
+            }
 
             return $subscription;
         });
@@ -101,6 +106,7 @@ class SubscriptionController extends Controller
             }
         }
 
+        $pendingClaims->finalizeFor($subscription, $pendingClaimId ? (int) $pendingClaimId : null);
         return redirect()->route('subscription.success');
     }
 

@@ -8,6 +8,14 @@ return [
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
     ],
 
+    'afterpay' => [
+        'merchant_id' => env('AFTERPAY_MERCHANT_ID'),
+        'secret' => env('AFTERPAY_SECRET'),
+        'base_url' => env('AFTERPAY_ENVIRONMENT', 'sandbox') === 'production'
+            ? 'https://global-api.afterpay.com'
+            : 'https://global-api-sandbox.afterpay.com',
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services

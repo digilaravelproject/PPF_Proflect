@@ -28,38 +28,42 @@ class ClaimController extends Controller
         return view('claims.index', compact('claims'));
     }
 
+    public function subscribe(Request $request, Claim $claim): RedirectResponse
+    {
+        abort_unless($claim->user_id === $request->user()->id && $claim->status === 'awaiting_subscription' && ! $claim->subscription_id, 404);
+        $request->session()->put(['claim_subscription_flow' => true, 'pending_claim_id' => $claim->id]);
+
+        return redirect()->route('subscription.index')->with('status', 'Choose a subscription to submit claim '.$claim->claim_number.'.');
+    }
+
     public function create(Request $request): View|RedirectResponse
     {
+        $isAdditional = $request->user()->claims()->where('status', '!=', 'awaiting_subscription')->exists();
         $subscription = $this->availableSubscription($request);
 
-        if (! $subscription) {
-            if ($request->user()->claims()->exists()) {
-                return redirect()->route('claims.warranty.create');
-            }
-
+        if (! $subscription && ! $isAdditional) {
             return redirect()->route('subscription.index')->withErrors([
                 'subscription' => 'Choose an active protection plan before submitting a claim.',
             ]);
         }
 
+        $warrantyCards = $request->user()->usedWarrantyCodes()->whereNull('subscription_id')
+            ->whereDoesntHave('claim')->where('is_active', true)->where('expires_at', '>', now())->latest('used_at')->get();
+        if ($isAdditional && $warrantyCards->isEmpty()) return redirect()->route('claims.warranty.create')->withErrors(['warranty_code' => 'Add an available warranty card before making another claim.']);
+
         $request->session()->forget('claim_subscription_flow');
 
         $vehicleMakes = VehicleMake::where('is_active', true)->whereHas('models', fn ($query) => $query->where('is_active', true))->orderBy('name')->get(['id', 'name']);
 
-        return view('claims.create', ['subscription' => $subscription, 'vehicleMakes' => $vehicleMakes]);
+        return view('claims.create', compact('subscription', 'vehicleMakes', 'warrantyCards', 'isAdditional'));
     }
 
     public function store(Request $request, CustomerNotificationService $notifications): RedirectResponse
     {
+        $isAdditional = $request->user()->claims()->where('status', '!=', 'awaiting_subscription')->exists();
         $subscription = $this->availableSubscription($request);
 
-        if (! $subscription) {
-            if ($request->user()->claims()->exists()) {
-                return redirect()->route('claims.warranty.create')->withErrors([
-                    'subscription' => 'A new warranty code and subscription are required for each additional claim.',
-                ]);
-            }
-
+        if (! $subscription && ! $isAdditional) {
             return redirect()->route('subscription.index')->withErrors([
                 'subscription' => 'Choose an active protection plan before submitting a claim.',
             ]);
@@ -67,6 +71,7 @@ class ClaimController extends Controller
 
         $catalogRequired = VehicleMake::where('is_active', true)->whereHas('models', fn ($query) => $query->where('is_active', true))->exists();
         $validated = $request->validate([
+            'warranty_code_id' => [$isAdditional ? 'required' : 'nullable', 'integer'],
             'vehicle_make_id' => [$catalogRequired ? 'required' : 'nullable', 'integer', Rule::exists('vehicle_makes', 'id')->where('is_active', true)],
             'vehicle_model_id' => [$catalogRequired ? 'required' : 'nullable', 'integer', Rule::exists('vehicle_models', 'id')->where('is_active', true)],
             'vehicle_make' => [$catalogRequired ? 'nullable' : 'required', 'string', 'max:100'],
@@ -116,27 +121,22 @@ class ClaimController extends Controller
                 $paths[] = $photo->store('claims/'.$request->user()->id, 'public');
             }
 
-            $claim = DB::transaction(function () use ($validated, $request, $subscription, $paths, $model, $modelPhotoPath, $panelDetails): Claim {
-                $subscription = Subscription::query()->whereKey($subscription->id)->lockForUpdate()->firstOrFail();
-                if ($subscription->claimed_at || $subscription->status !== 'active' || ! $subscription->ends_at->isFuture()) {
+            $claim = DB::transaction(function () use ($validated, $request, $subscription, $paths, $model, $modelPhotoPath, $panelDetails, $isAdditional): Claim {
+                if ($subscription) $subscription = Subscription::query()->whereKey($subscription->id)->lockForUpdate()->firstOrFail();
+                if (! $isAdditional && ($subscription->claimed_at || $subscription->status !== 'active' || ! $subscription->ends_at->isFuture())) {
                     throw ValidationException::withMessages([
                         'subscription' => 'This subscription has already been used. Enter a new warranty code and choose a new subscription.',
                     ]);
                 }
 
-                $warrantyCode = WarrantyCode::query()
-                    ->where('subscription_id', $subscription->id)
-                    ->where('used_by_user_id', $request->user()->id)
-                    ->first();
-                if ($request->user()->claims()->exists() && ! $warrantyCode) {
-                    throw ValidationException::withMessages([
-                        'subscription' => 'Your new subscription must be activated with a new warranty code.',
-                    ]);
-                }
+                $warrantyCode = $isAdditional
+                    ? WarrantyCode::query()->whereKey($validated['warranty_code_id'])->where('used_by_user_id', $request->user()->id)->whereNull('subscription_id')->whereDoesntHave('claim')->lockForUpdate()->first()
+                    : WarrantyCode::query()->where('subscription_id', $subscription->id)->where('used_by_user_id', $request->user()->id)->first();
+                if ($isAdditional && ! $warrantyCode) throw ValidationException::withMessages(['warranty_code_id' => 'Select an available warranty card.']);
 
                 $claim = Claim::create([
                     'claim_number' => $this->claimNumber(), 'user_id' => $request->user()->id,
-                    'subscription_id' => $subscription->id,
+                    'subscription_id' => $subscription?->id,
                     'warranty_code_id' => $warrantyCode?->id,
                     'vehicle_make' => $model?->make->name ?? $validated['vehicle_make'], 'vehicle_model' => $model?->name ?? $validated['vehicle_model'],
                     'vehicle_model_id' => $model?->id,
@@ -145,9 +145,9 @@ class ClaimController extends Controller
                     'registration_number' => strtoupper($validated['registration_number']),
                     'vehicle_year' => $validated['vehicle_year'] ?? null,
                     'panels' => array_values(array_unique($validated['panels'])), 'panel_details' => $panelDetails, 'photos' => $paths,
-                    'description' => $validated['description'] ?? null, 'available_date' => $validated['available_date'] ?? null, 'status' => 'pending',
+                    'description' => $validated['description'] ?? null, 'available_date' => $validated['available_date'] ?? null, 'status' => $isAdditional ? 'awaiting_subscription' : 'pending',
                 ]);
-                $subscription->forceFill(['claimed_at' => now()])->save();
+                if ($subscription) $subscription->forceFill(['claimed_at' => now()])->save();
                 return $claim;
             });
         } catch (\Throwable $exception) {
@@ -156,6 +156,10 @@ class ClaimController extends Controller
             throw $exception;
         }
 
+        if ($isAdditional) {
+            $request->session()->put(['claim_subscription_flow' => true, 'pending_claim_id' => $claim->id]);
+            return redirect()->route('subscription.index')->with('status', 'Claim details saved. Activate a subscription to submit the claim.');
+        }
         $notifications->claimReceived($claim->load('user'));
         return redirect()->route('claims.show', $claim)->with('status', 'Your claim was submitted successfully.');
     }

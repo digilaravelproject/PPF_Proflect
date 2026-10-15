@@ -28,8 +28,8 @@
         </div>
     </section>
     <div class="confirmation-note"><span>🚗</span><p><b>Your protection follows your registered vehicle.</b><br>Your subscription email includes your warranty code. You can request the code again from your dashboard.</p></div>
-    @if(session('claim_subscription_flow'))
-        <a href="{{ route('claims.create') }}" class="button button--dark">Continue to my claim <span>→</span></a>
+    @if($claim ?? null)
+        <a href="{{ route('claims.show',$claim) }}" class="button button--dark">Claim submitted successfully <span>→</span></a>
     @else
         <a href="{{ route('dashboard') }}" class="button button--dark">Go to my dashboard <span>→</span></a>
     @endif
