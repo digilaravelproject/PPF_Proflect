@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Proflect · Car Refresh Program (PCF)</title>
     @vite(['resources/css/app.css', 'resources/css/auth-shade.css', 'resources/js/app.js'])
+    <!-- New external CSS loaded after existing styles -->
+    <link
+        rel="stylesheet"
+        href="{{ asset('css/proflect-video-fullwidth.css') }}?v=1"
+    >
 </head>
 <body class="landing-body">
     <header class="landing-nav">
@@ -19,10 +24,10 @@
             <img src="{{ asset('images/rolls-royce-spectre-series-ii-hero.png') }}" alt="Black Rolls-Royce Spectre Series II protected by Proflect">
             <div class="landing-hero__shade"></div>
             <div class="landing-hero__copy">
-                <span>PROFLECT CAR REFRESH PROGRAM · PCF</span>
-                <h1>Premium PPF for a cleaner, brighter tomorrow.</h1>
+                <span>PROTECT YOUR PROTECTION</span>
+                <h1>Your PPF is an investment. Keep it covered.</h1>
                 <p>Protect your vehicle. Enhance its beauty. Get straightforward replacement support when eligible film is damaged.</p>
-                <div class="landing-hero__actions"><a class="button button--light" href="{{ route('register') }}">Get protected <b>→</b></a><a class="landing-text-link" href="#benefits">Explore PCF</a></div>
+                <div class="landing-hero__actions"><a class="button button--light" href="{{ route('register') }}">Protect My PPF Now <b>→</b></a><a class="landing-text-link" href="#benefits">Explore PCF</a></div>
             </div>
             <div class="landing-teaser"><span class="landing-teaser__icon">◇</span><div><b>Add extra peace of mind</b><p>Ask about the Proflect Car Refresh Program (PCF) within 30 days.</p><a href="{{ route('register') }}">Learn more →</a></div></div>
         </section>
@@ -47,7 +52,7 @@
                     </span>
                     <span class="sr-only">Play The Proflect finish video</span>
                 </button>
-                <button class="landing-film landing-film--two" type="button" data-video-open data-video-src="{{ asset('videos/care-refresh-02.mp4') }}" data-video-title="Refresh with confidence">
+                <?php /*<button class="landing-film landing-film--two" type="button" data-video-open data-video-src="{{ asset('videos/care-refresh-02.mp4') }}" data-video-title="Refresh with confidence">
                     <img class="landing-film__media" src="{{ asset('videos/care-refresh-02-poster.jpg') }}" alt="" aria-hidden="true">
                     <span class="landing-film__veil"></span>
                     <span class="landing-film__topline"><span class="landing-film__number">FILM 02</span><span class="landing-film__watch">WATCH NOW <b>↗</b></span></span>
@@ -58,7 +63,7 @@
                         <span class="landing-film__copy"><small>01:18 · CARE REFRESH</small><b>Refresh with confidence</b><span>See care, clarity and protection in motion.</span></span>
                     </span>
                     <span class="sr-only">Play Refresh with confidence video</span>
-                </button>
+                </button>*/ ?>
             </div>
         </section>
         <section class="landing-benefits" id="benefits">
