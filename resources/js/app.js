@@ -24,6 +24,49 @@ document.querySelectorAll('[data-landing-nav-toggle]').forEach((button) => {
     });
 });
 
+const videoModal = document.querySelector('[data-video-modal]');
+if (videoModal) {
+    const player = videoModal.querySelector('[data-video-player]');
+    const title = videoModal.querySelector('[data-video-modal-title]');
+    const error = videoModal.querySelector('[data-video-error]');
+    const closeButton = videoModal.querySelector('.video-modal__close');
+    let trigger = null;
+
+    const closeVideo = () => {
+        player.pause();
+        player.removeAttribute('src');
+        player.load();
+        videoModal.hidden = true;
+        document.body.classList.remove('video-modal-open');
+        error.hidden = true;
+        trigger?.focus();
+        trigger = null;
+    };
+
+    document.querySelectorAll('[data-video-open]').forEach((button) => {
+        button.addEventListener('click', async () => {
+            trigger = button;
+            title.textContent = button.dataset.videoTitle || 'Care Refresh';
+            error.hidden = true;
+            player.src = button.dataset.videoSrc;
+            videoModal.hidden = false;
+            document.body.classList.add('video-modal-open');
+            closeButton.focus();
+            try {
+                await player.play();
+            } catch (_) {
+                // Native controls remain available when autoplay is restricted.
+            }
+        });
+    });
+
+    videoModal.querySelectorAll('[data-video-close]').forEach((button) => button.addEventListener('click', closeVideo));
+    player.addEventListener('error', () => { error.hidden = false; });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !videoModal.hidden) closeVideo();
+    });
+}
+
 document.querySelectorAll('[data-password-toggle]').forEach((button) => {
     button.addEventListener('click', () => {
         const input = document.getElementById(button.dataset.passwordToggle);
