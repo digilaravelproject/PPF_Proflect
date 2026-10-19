@@ -26,7 +26,7 @@
             <div class="landing-hero__copy">
                 <span>PROTECT YOUR PROTECTION</span>
                 <h1>Your PPF is an investment. Keep it covered.</h1>
-                <p>Protect your vehicle. Enhance its beauty. Get straightforward replacement support when eligible film is damaged.</p>
+                <p>Insure your PPF. Enhance its beauty. Get straightforward replacement support when eligible film is damaged.</p>
                 <div class="landing-hero__actions"><a class="button button--light" href="{{ route('register') }}">Protect My PPF Now <b>→</b></a><a class="landing-text-link" href="#benefits">Explore PCF</a></div>
             </div>
             <div class="landing-teaser"><span class="landing-teaser__icon">◇</span><div><b>Add extra peace of mind</b><p>Ask about the Proflect Car Refresh Program (PCF) within 30 days.</p><a href="{{ route('register') }}">Learn more →</a></div></div>
