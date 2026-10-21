@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Mail\PaymentSuccessfulMail;
-use App\Models\Payment;
 use App\Models\Claim;
+use App\Models\Payment;
 use App\Models\Subscription;
 use App\Models\WarrantyCode;
 use Illuminate\Support\Facades\DB;
@@ -44,8 +44,16 @@ class PaymentFulfillmentService
                 'starts_at' => now(),
                 'ends_at' => $locked->plan->subscriptionEndsAt(),
             ]);
+            $upgradeFrom = isset($locked->metadata['upgrade_from_subscription_id']) ? (int) $locked->metadata['upgrade_from_subscription_id'] : null;
+            if ($upgradeFrom) {
+                Subscription::query()->whereKey($upgradeFrom)->where('user_id', $locked->user_id)->update(['status' => 'upgraded']);
+            }
             $locked->user()->update(['onboarding_completed_at' => now()]);
-            if (! Claim::query()->where('user_id', $locked->user_id)->where('status', 'awaiting_subscription')->exists()) {
+            $selectedWarrantyCode = isset($locked->metadata['warranty_code_id']) ? (int) $locked->metadata['warranty_code_id'] : null;
+            if ($selectedWarrantyCode) {
+                WarrantyCode::query()->whereKey($selectedWarrantyCode)->where('used_by_user_id', $locked->user_id)
+                    ->update(['subscription_id' => $subscription->id]);
+            } elseif (! Claim::query()->where('user_id', $locked->user_id)->where('status', 'awaiting_subscription')->exists()) {
                 WarrantyCode::query()->where('used_by_user_id', $locked->user_id)->whereNull('subscription_id')
                     ->latest('used_at')->limit(1)->update(['subscription_id' => $subscription->id]);
             }
@@ -70,6 +78,7 @@ class PaymentFulfillmentService
         }
 
         $this->pendingClaims->finalizeFor($subscription, isset($paidPayment->metadata['pending_claim_id']) ? (int) $paidPayment->metadata['pending_claim_id'] : null);
+
         return $subscription;
     }
 }

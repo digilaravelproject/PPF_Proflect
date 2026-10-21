@@ -16,6 +16,8 @@
         <article><span class="overview-stat-icon">▤</span><div><small>CLAIMS</small><b>{{ auth()->user()->claims()->count() }}</b><p>All submitted claim requests.</p></div></article>
     </section>
 
+    <section class="dashboard-upgrade" style="margin-top: 2% !important;"><div><span class="eyebrow">UPGRADE YOUR PROTECTION</span><h3>Need more cover?</h3><p>Compare all available plans and use one of your registered warranty cards to upgrade.</p></div><a href="{{ route('subscription.index') }}" class="button button--dark">Upgrade plan <span>→</span></a></section>
+
     @if($subscription && $warrantyCode)
         <section class="dashboard-warranty-card">
             <div><span class="eyebrow">YOUR PPF PROTECTION</span><h3>Warranty card</h3><p>Your registered warranty and current subscription expiry are shown together.</p></div>
@@ -35,7 +37,7 @@
     @endif
 
     <section class="panel warranty-cards-panel">
-        <div class="panel__header warranty-cards-heading"><div><span class="eyebrow">MY WARRANTY CARDS</span><h3>Registered cards</h3><p>Add warranty codes here, then select an available card when making a claim.</p></div><a href="{{ route('claims.warranty.create') }}" class="button button--gold">Add warranty code +</a></div>
+        <div class="panel__header warranty-cards-heading"><div><span class="eyebrow">MY WARRANTY CARDS</span><h3>Registered cards</h3><p>Add warranty codes here, then select an available card when making a claim.</p></div><a href="{{ route('claims.warranty.create') }}" class="button button--dark">Add warranty code +</a></div>
         <div class="warranty-card-list">@forelse($warrantyCards as $card)@php($cardStatus=$card->claim?->status === 'awaiting_subscription' ? 'Subscription pending' : ($card->claim || $card->subscription_id ? 'Used' : ($card->is_active && $card->expires_at?->isFuture() ? 'Available' : ($card->expires_at?->isPast() ? 'Expired' : 'Inactive'))))<article class="registered-warranty-card {{ $cardStatus === 'Used' ? 'is-unavailable' : '' }}"><div class="registered-warranty-card__brand"><strong>PROFLECT</strong><span>PAINT PROTECTION</span></div><small>WARRANTY</small><div class="registered-warranty-card__number"><img src="{{ asset('images/proflect-logo.png') }}" alt=""><div><b>{{ $card->code }}</b><em>{{ $card->expires_at ? 'Expires '.$card->expires_at->format('d/m/y') : 'No expiry recorded' }}</em></div></div><span class="registered-warranty-card__status">{{ $cardStatus }}</span></article>@empty<div class="warranty-cards-empty"><b>No warranty cards yet</b><span>Add your next warranty code to make it available for a future claim.</span></div>@endforelse</div>
     </section>
 

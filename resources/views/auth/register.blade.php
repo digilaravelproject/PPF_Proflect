@@ -72,6 +72,7 @@
                 <label for="password_confirmation">Confirm password</label>
                 <div class="field__control">
                     <input id="password_confirmation" name="password_confirmation" type="password" placeholder="Repeat password" required autocomplete="new-password">
+                    <button class="password-toggle" type="button" data-password-toggle="password_confirmation" aria-label="Show confirm password"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-5 9.5-5 9.5 5 9.5 5-3.5 5-9.5 5-9.5-5-9.5-5z"/><circle cx="12" cy="12" r="2.5"/></svg></button>
                 </div>
             </div>
         </div>

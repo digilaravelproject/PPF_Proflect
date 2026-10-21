@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\PlanController as AdminPlanController;
 use App\Http\Controllers\Admin\PpfVariantController as AdminPpfVariantController;
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
 use App\Http\Controllers\Admin\ReportController as AdminReportController;
+use App\Http\Controllers\Admin\UpgradeWindowController as AdminUpgradeWindowController;
 use App\Http\Controllers\Admin\VehicleController as AdminVehicleController;
 use App\Http\Controllers\Admin\VehicleModelController as AdminVehicleModelController;
 use App\Http\Controllers\Admin\WarrantyCodeController as AdminWarrantyCodeController;
@@ -26,14 +27,20 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\VehicleCatalogController;
+use App\Models\Plan;
 use App\Models\VehicleModel;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 Route::get('/', function () {
-    return auth()->check()
-        ? redirect()->route('dashboard')
-        : view('welcome');
+    $currentSubscription = auth()->check() && Schema::hasTable('subscriptions') ? auth()->user()->subscriptions()
+        ->with('plan')->where('status', 'active')->where('ends_at', '>', now())->latest()->first() : null;
+
+    return view('welcome', [
+        'plans' => Schema::hasTable('plans') ? Plan::query()->where('is_active', true)->orderBy('sort_order')->get() : collect(),
+        'currentSubscription' => $currentSubscription,
+    ]);
 });
 
 Route::view('/terms-of-service', 'legal.terms')->name('terms');
@@ -115,6 +122,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::middleware('admin.auth')->group(function () {
         Route::get('/dashboard', AdminDashboardController::class)->name('dashboard');
         Route::resource('plans', AdminPlanController::class)->except('show');
+        Route::get('/masters/upgrade-window', [AdminUpgradeWindowController::class, 'edit'])->name('masters.upgrade-window.edit');
+        Route::put('/masters/upgrade-window', [AdminUpgradeWindowController::class, 'update'])->name('masters.upgrade-window.update');
         Route::resource('customers', AdminCustomerController::class)->except('show');
         Route::resource('vehicles', AdminVehicleController::class)->parameters(['vehicles' => 'vehicle']);
         Route::patch('/vehicles/{vehicle}/toggle', [AdminVehicleController::class, 'toggle'])->name('vehicles.toggle');

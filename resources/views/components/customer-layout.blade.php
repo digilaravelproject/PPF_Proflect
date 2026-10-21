@@ -13,6 +13,7 @@
         <a class="{{ request()->routeIs('dashboard')?'active':'' }}" href="{{ route('dashboard') }}">Dashboard</a>
         <a class="{{ request()->routeIs('vehicles.*')?'active':'' }}" href="{{ route('vehicles.index') }}">My Vehicles</a>
         <a class="{{ request()->routeIs('warranty.show')?'active':'' }}" href="{{ route('warranty.show') }}">My Warranty</a>
+        <a class="{{ request()->routeIs('subscription.*')?'active':'' }}" href="{{ route('subscription.index') }}">Subscription</a>
         <a class="{{ request()->routeIs('claims.create')?'active':'' }}" href="{{ route('claims.create') }}">Make a Claim</a>
         <a class="{{ request()->routeIs('profile.*')?'active':'' }}" href="{{ route('profile.edit') }}">Profile</a>
         <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit">Logout</button></form>

@@ -16,7 +16,7 @@
         <x-brand light />
         <button type="button" class="landing-nav__toggle" data-landing-nav-toggle aria-expanded="false" aria-label="Open menu">☰</button>
         <nav data-landing-nav>
-            <a href="#benefits">Services</a><a href="#films">Watch films</a><a href="#program">Warranty</a><a href="#support">Support</a><a href="{{ route('login') }}">Login</a>
+            <a href="#benefits">Services</a><a href="#films">Watch films</a><a href="#plans">Plans</a><a href="#support">Support</a>@auth<a href="{{ route('dashboard') }}">Dashboard</a>@else<a href="{{ route('login') }}">Login</a>@endauth
         </nav>
     </header>
     <main>
@@ -41,7 +41,7 @@
             </div>
             <div class="landing-film-grid">
                 <button class="landing-film landing-film--one" type="button" data-video-open data-video-src="{{ asset('videos/care-refresh-01.mp4') }}" data-video-title="The Proflect finish">
-                    <img class="landing-film__media" src="{{ asset('videos/care-refresh-01-poster.jpg') }}" alt="" aria-hidden="true">
+                    <img class="landing-film__media" src="{{ asset('images/proflect-video-poster.jpg') }}" alt="A Proflect technician applying paint protection film to a vehicle">
                     <span class="landing-film__veil"></span>
                     <span class="landing-film__topline"><span class="landing-film__number">FILM 01</span><span class="landing-film__watch">WATCH NOW <b>↗</b></span></span>
                     <span class="landing-film__content">
@@ -65,6 +65,16 @@
                     <span class="sr-only">Play Refresh with confidence video</span>
                 </button>*/ ?>
             </div>
+        </section>
+        <section class="landing-plans" id="plans">
+            <div class="landing-plans__heading"><span class="eyebrow">Premium PPF protection</span><h2>Choose the cover that fits your journey.</h2><p>Get protected with a clear, one-time plan for eligible Proflect customers.</p></div>
+            <div class="plan-cards">@foreach($plans as $plan)@php($isCurrent=$currentSubscription?->plan_id === $plan->id)<article class="plan-card plan-card--{{ $plan->accent }} {{ $isCurrent ? 'plan-card--current' : '' }}">
+                <div class="plan-card__head"><span class="plan-badge">{{ strtoupper(substr($plan->name,0,1)) }}</span><div><span>PROFLECT</span><h3>{{ $plan->name }}</h3></div></div>
+                <p>{{ $plan->description }}</p><div class="plan-price">@if($plan->is_free)<b class="free-price">FREE</b>@else<sup>A$</sup><b>{{ number_format($plan->price/100) }}</b><span>AUD<br>one-time payment</span>@endif</div>
+                <div class="plan-term"><b>{{ strtoupper($plan->duration_label) }}</b><span>•</span><b>{{ rtrim(rtrim($plan->coverage_sqm,'0'),'.') }} SQ. METRES</b></div>
+                <ul>@foreach($plan->features ?? [] as $feature)<li>✓ <span>{{ $feature }}</span></li>@endforeach</ul>
+                @auth @if($isCurrent)<button class="button button--unavailable" disabled>Current plan</button>@elseif(!$plan->is_free)<a class="button {{ $plan->accent === 'gold' ? 'button--gold' : 'button--dark' }}" href="{{ route('subscription.checkout',$plan) }}">Upgrade plan <span>→</span></a>@endif @endauth
+            </article>@endforeach</div>
         </section>
         <section class="landing-benefits" id="benefits">
             <div><span class="eyebrow">BUILT AROUND YOUR VEHICLE</span><h2>Protection made simple.</h2></div>

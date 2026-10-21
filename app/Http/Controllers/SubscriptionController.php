@@ -3,14 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Mail\PaymentSuccessfulMail;
-use App\Models\Payment;
 use App\Models\Claim;
+use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\WarrantyCode;
 use App\Services\CustomerNotificationService;
-use App\Services\WarrantyCodeService;
 use App\Services\PendingClaimService;
+use App\Services\UpgradeEligibilityService;
+use App\Services\WarrantyCodeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,8 +21,16 @@ use Throwable;
 
 class SubscriptionController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, UpgradeEligibilityService $eligibility): View
     {
+        $currentSubscription = $request->user()->subscriptions()
+            ->with('plan')->where('status', 'active')->where('ends_at', '>', now())->latest()->first();
+        $warrantyCards = $request->user()->usedWarrantyCodes()->latest('used_at')->get();
+        $warrantyCards->each(function (WarrantyCode $code) use ($eligibility): void {
+            $code->setAttribute('upgrade_deadline', $eligibility->deadline($code));
+            $code->setAttribute('upgrade_eligible', $eligibility->isEligible($code));
+        });
+
         $expiredSubscription = $request->user()->subscriptions()
             ->with('plan')
             ->where('ends_at', '<=', now())
@@ -34,19 +43,35 @@ class SubscriptionController extends Controller
             'usedFreePlanIds' => $request->user()->subscriptions()
                 ->whereHas('plan', fn ($query) => $query->where('price', 0))
                 ->pluck('plan_id'),
+            'currentSubscription' => $currentSubscription,
+            'warrantyCards' => $warrantyCards,
+            'upgradeWindowMonths' => $eligibility->windowMonths(),
         ]);
     }
 
-    public function checkout(Plan $plan): View
+    public function checkout(Request $request, Plan $plan, UpgradeEligibilityService $eligibility): View
     {
         abort_unless($plan->is_active && ! $plan->is_free, 404);
+        $currentSubscription = $request->user()->subscriptions()
+            ->with('plan')->where('status', 'active')->where('ends_at', '>', now())->latest()->first();
+        if ($currentSubscription?->plan_id === $plan->id) {
+            return redirect()->route('subscription.index')->withErrors(['plan' => 'This is already your current plan.']);
+        }
+        $warrantyCards = $request->user()->usedWarrantyCodes()->latest('used_at')->get();
+        $warrantyCards->each(function (WarrantyCode $code) use ($eligibility): void {
+            $code->setAttribute('upgrade_deadline', $eligibility->deadline($code));
+            $code->setAttribute('upgrade_eligible', $eligibility->isEligible($code));
+        });
 
-        return view('subscription.checkout', compact('plan'));
+        return view('subscription.checkout', compact('plan', 'currentSubscription', 'warrantyCards'));
     }
 
     public function activateFree(Request $request, Plan $plan, CustomerNotificationService $notifications, WarrantyCodeService $codes, PendingClaimService $pendingClaims): RedirectResponse
     {
         abort_unless($plan->is_active && $plan->is_free && $plan->duration_days, 404);
+        if ($request->user()->subscriptions()->where('status', 'active')->where('ends_at', '>', now())->exists()) {
+            return redirect()->route('subscription.index')->withErrors(['plan' => 'An active plan cannot be replaced by the free trial.']);
+        }
 
         $pendingClaimId = $request->session()->get('pending_claim_id');
         $subscription = DB::transaction(function () use ($request, $plan, $pendingClaimId): Subscription {
@@ -107,6 +132,7 @@ class SubscriptionController extends Controller
         }
 
         $pendingClaims->finalizeFor($subscription, $pendingClaimId ? (int) $pendingClaimId : null);
+
         return redirect()->route('subscription.success');
     }
 

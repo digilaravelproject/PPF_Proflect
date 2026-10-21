@@ -7,6 +7,7 @@ use App\Models\Plan;
 use App\Services\AfterpayService;
 use App\Services\PaymentFulfillmentService;
 use App\Services\StripeService;
+use App\Services\UpgradeEligibilityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,16 +17,21 @@ use Throwable;
 
 class PaymentController extends Controller
 {
-    public function order(Request $request, StripeService $stripe): JsonResponse
+    public function order(Request $request, StripeService $stripe, UpgradeEligibilityService $eligibility): JsonResponse
     {
-        $validated = $request->validate(['plan_id' => ['required', 'integer', 'exists:plans,id']]);
+        $validated = $request->validate(['plan_id' => ['required', 'integer', 'exists:plans,id'], 'warranty_code_id' => ['nullable', 'integer']]);
         $plan = Plan::query()->whereKey($validated['plan_id'])->where('is_active', true)->where('price', '>', 0)->firstOrFail();
+        $activeSubscription = $request->user()->subscriptions()->where('status', 'active')->where('ends_at', '>', now())->latest()->first();
+        if ($activeSubscription?->plan_id === $plan->id) {
+            return response()->json(['message' => 'This is already your current plan.'], 422);
+        }
+        $selectedCode = $activeSubscription ? $eligibility->validateSelection($request->user(), $validated['warranty_code_id'] ?? null) : null;
         try {
             $session = $stripe->createCheckoutSession($plan, $request->user());
             Payment::create([
                 'user_id' => $request->user()->id, 'plan_id' => $plan->id, 'gateway' => 'stripe', 'gateway_order_id' => $session['id'],
                 'amount' => $plan->price, 'currency' => $plan->currency, 'status' => 'created',
-                'metadata' => ['pending_claim_id' => $request->session()->get('pending_claim_id')],
+                'metadata' => ['pending_claim_id' => $request->session()->get('pending_claim_id'), 'warranty_code_id' => $selectedCode?->id, 'upgrade_from_subscription_id' => $activeSubscription?->id],
             ]);
 
             return response()->json(['checkout_url' => $session['url']]);
@@ -59,10 +65,15 @@ class PaymentController extends Controller
         return redirect()->route('subscription.success');
     }
 
-    public function afterpayOrder(Request $request, AfterpayService $afterpay): JsonResponse
+    public function afterpayOrder(Request $request, AfterpayService $afterpay, UpgradeEligibilityService $eligibility): JsonResponse
     {
-        $validated = $request->validate(['plan_id' => ['required', 'integer', 'exists:plans,id']]);
+        $validated = $request->validate(['plan_id' => ['required', 'integer', 'exists:plans,id'], 'warranty_code_id' => ['nullable', 'integer']]);
         $plan = Plan::query()->whereKey($validated['plan_id'])->where('is_active', true)->where('price', '>', 0)->firstOrFail();
+        $activeSubscription = $request->user()->subscriptions()->where('status', 'active')->where('ends_at', '>', now())->latest()->first();
+        if ($activeSubscription?->plan_id === $plan->id) {
+            return response()->json(['message' => 'This is already your current plan.'], 422);
+        }
+        $selectedCode = $activeSubscription ? $eligibility->validateSelection($request->user(), $validated['warranty_code_id'] ?? null) : null;
         $merchantReference = 'proflect-'.Str::uuid();
 
         try {
@@ -79,6 +90,8 @@ class PaymentController extends Controller
                     'merchant_reference' => $merchantReference,
                     'checkout_expires_at' => $checkout['expires'] ?? null,
                     'pending_claim_id' => $request->session()->get('pending_claim_id'),
+                    'warranty_code_id' => $selectedCode?->id,
+                    'upgrade_from_subscription_id' => $activeSubscription?->id,
                 ],
             ]);
 

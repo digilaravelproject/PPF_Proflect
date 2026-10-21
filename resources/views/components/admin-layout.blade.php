@@ -14,6 +14,10 @@
         <a class="{{ request()->routeIs('admin.warranty-codes.*')?'active':'' }}" href="{{ route('admin.warranty-codes.index') }}"><span>⌁</span>Warranty Codes</a>
         <a class="{{ request()->routeIs('admin.reports.*')?'active':'' }}" href="{{ route('admin.reports.index') }}"><span>▤</span>Reports</a>
         <a class="{{ request()->routeIs('admin.plans.*')?'active':'' }}" href="{{ route('admin.plans.index') }}"><span>⚙</span>Subscription Plans</a>
+        <details class="sidebar-nav-group" @if(request()->routeIs('admin.masters.*')) open @endif>
+            <summary class="sidebar-nav-label"><span>⚙</span><b>Masters</b><i aria-hidden="true">⌄</i></summary>
+            <div class="sidebar-nav-dropdown"><a class="sidebar-submenu {{ request()->routeIs('admin.masters.upgrade-window.*')?'active':'' }}" href="{{ route('admin.masters.upgrade-window.edit') }}">Upgrade Window</a></div>
+        </details>
     </nav>
     <form method="POST" action="{{ route('admin.logout') }}">@csrf<button class="sidebar__logout"><span>↪</span>Sign out</button></form>
 </aside>

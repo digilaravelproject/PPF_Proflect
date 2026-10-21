@@ -83,20 +83,21 @@
 
     <div class="admin-table-wrap">
         <table class="admin-table">
-            <thead><tr><th>Warranty code</th><th>Status</th><th>Customer</th><th>Setting</th><th>Expires</th><th>Created</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Warranty code</th><th>Status</th><th>Customer</th><th>Activation date</th><th>Setting</th><th>Expires</th><th>Created</th><th>Actions</th></tr></thead>
             <tbody>
                 @forelse($codes as $code)
                     <tr>
                         <td><b class="code-value">{{ $code->code }}</b></td>
                         <td><span class="claim-status claim-status--{{ $code->status }}">{{ ucfirst($code->status) }}</span></td>
                         <td>@if($code->usedBy)<span><b>{{ $code->usedBy->name }}</b><small>{{ $code->usedBy->email }}</small></span>@else — @endif</td>
+                        <td>{{ $code->activated_at?->format('d M Y') ?: 'Not activated' }}</td>
                         <td>@unless($code->trashed() || $code->used_at)<form method="POST" action="{{ route('admin.warranty-codes.toggle', $code->id) }}">@csrf @method('PATCH')<button class="code-toggle {{ $code->is_active ? 'on' : '' }}" title="{{ $code->is_active ? 'Deactivate' : 'Activate' }} code" aria-label="{{ $code->is_active ? 'Deactivate' : 'Activate' }} code"><i></i></button></form>@else — @endunless</td>
                         <td>{{ $code->expires_at?->format('d M Y') ?: 'Starts on activation' }}</td>
                         <td>{{ $code->created_at->format('d M Y') }}</td>
                         <td><div class="table-actions"><a class="icon-action" href="{{ route('admin.warranty-codes.show', $code->id) }}" title="View code" aria-label="View code"><x-eye-icon/></a>@unless($code->trashed())<form method="POST" action="{{ route('admin.warranty-codes.destroy', $code->id) }}" onsubmit="return confirm('Delete this warranty code?')">@csrf @method('DELETE')<button class="icon-action icon-action--danger" title="Delete code" aria-label="Delete code">×</button></form>@endunless</div></td>
                     </tr>
                 @empty
-                    <tr><td colspan="7">No warranty codes match these filters.</td></tr>
+                    <tr><td colspan="8">No warranty codes match these filters.</td></tr>
                 @endforelse
             </tbody>
         </table>

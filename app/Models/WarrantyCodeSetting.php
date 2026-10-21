@@ -6,10 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class WarrantyCodeSetting extends Model
 {
-    protected $fillable = ['validity_months'];
+    protected $fillable = ['validity_months', 'upgrade_window_months'];
 
     protected function casts(): array
     {
-        return ['validity_months' => 'integer'];
+        return ['validity_months' => 'integer', 'upgrade_window_months' => 'integer'];
     }
 }

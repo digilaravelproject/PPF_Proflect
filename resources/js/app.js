@@ -289,10 +289,13 @@ document.querySelectorAll('[data-payment-button]').forEach((button) => {
             const orderResponse = await fetch(orderUrl, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf},
-                body: JSON.stringify({plan_id: Number(button.dataset.planId)}),
+                body: JSON.stringify({
+                    plan_id: Number(button.dataset.planId),
+                    warranty_code_id: Number(document.querySelector('[name="warranty_code_id"]:checked')?.value) || null,
+                }),
             });
             const order = await orderResponse.json();
-            if (!orderResponse.ok) throw new Error(order.message || 'Unable to prepare the payment.');
+            if (!orderResponse.ok) throw new Error(Object.values(order.errors || {})[0]?.[0] || order.message || 'Unable to prepare the payment.');
 
             if (!order.checkout_url) throw new Error('The payment provider did not return a secure checkout URL.');
             window.location.assign(order.checkout_url);
