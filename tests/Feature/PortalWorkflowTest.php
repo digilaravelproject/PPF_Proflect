@@ -100,6 +100,62 @@ class PortalWorkflowTest extends TestCase
         $this->assertDatabaseHas('payments', ['gateway' => 'stripe', 'gateway_order_id' => 'cs_aud_test', 'currency' => 'AUD']);
     }
 
+    public function test_admin_offer_is_previewed_for_customers_and_used_for_payment(): void
+    {
+        $admin = Admin::create(['name' => 'Admin', 'email' => 'offers@ppf.com', 'password' => 'admin123']);
+        $this->actingAs($admin, 'admin')->post(route('admin.plans.store'), [
+            'name' => 'Offer Plan',
+            'price_aud' => 549,
+            'offer_percentage' => 25,
+            'duration_years' => 2,
+            'coverage_sqm' => 5,
+            'features_text' => 'Accidental damage cover',
+            'accent' => 'silver',
+            'is_active' => 1,
+            'sort_order' => 5,
+        ])->assertRedirect(route('admin.plans.index'));
+
+        $plan = Plan::query()->where('slug', 'offer-plan')->firstOrFail();
+        $this->assertSame(25, $plan->offer_percentage);
+        $this->assertSame(41175, $plan->offer_price);
+        $this->actingAs($admin, 'admin')->get(route('admin.plans.index'))
+            ->assertOk()->assertSee('25% OFF')->assertSee('AUD $411.75');
+
+        auth('admin')->logout();
+        $user = User::factory()->create();
+        $this->actingAs($user)->get(route('subscription.index'))
+            ->assertOk()->assertSee('25%')->assertSee('411.75');
+        $this->actingAs($user)->get(route('subscription.checkout', $plan))
+            ->assertOk()->assertSee('25% offer')->assertSee('AUD $411.75');
+
+        $this->mock(StripeService::class, function (MockInterface $mock) use ($plan): void {
+            $mock->shouldReceive('createCheckoutSession')->once()
+                ->with(\Mockery::on(fn (Plan $value) => $value->is($plan) && $value->offer_price === 41175), \Mockery::type(User::class))
+                ->andReturn(['id' => 'cs_offer_test', 'url' => 'https://checkout.stripe.com/c/pay/offer']);
+        });
+        $this->actingAs($user)->postJson(route('payments.order'), ['plan_id' => $plan->id])->assertOk();
+        $this->assertDatabaseHas('payments', ['gateway_order_id' => 'cs_offer_test', 'amount' => 41175]);
+    }
+
+    public function test_admin_cannot_apply_an_offer_to_a_free_plan(): void
+    {
+        $admin = Admin::create(['name' => 'Admin', 'email' => 'free-offers@ppf.com', 'password' => 'admin123']);
+
+        $this->actingAs($admin, 'admin')->post(route('admin.plans.store'), [
+            'name' => 'Invalid Free Offer',
+            'price_aud' => 0,
+            'offer_percentage' => 20,
+            'duration_years' => 0,
+            'duration_days' => 15,
+            'coverage_sqm' => 5,
+            'accent' => 'silver',
+            'is_active' => 1,
+            'sort_order' => 6,
+        ])->assertSessionHasErrors('offer_percentage');
+
+        $this->assertDatabaseMissing('plans', ['slug' => 'invalid-free-offer']);
+    }
+
     public function test_failed_stripe_verification_never_activates_a_subscription(): void
     {
         $user = User::factory()->create();

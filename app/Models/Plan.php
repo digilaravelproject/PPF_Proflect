@@ -7,16 +7,35 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Plan extends Model
 {
-    protected $fillable = ['name', 'slug', 'description', 'price', 'currency', 'duration_years', 'duration_days', 'coverage_sqm', 'features', 'accent', 'is_active', 'sort_order'];
+    protected $fillable = ['name', 'slug', 'description', 'price', 'offer_percentage', 'currency', 'duration_years', 'duration_days', 'coverage_sqm', 'features', 'accent', 'is_active', 'sort_order'];
 
     protected function casts(): array
     {
-        return ['price' => 'integer', 'duration_years' => 'integer', 'duration_days' => 'integer', 'features' => 'array', 'is_active' => 'boolean', 'coverage_sqm' => 'decimal:2'];
+        return ['price' => 'integer', 'offer_percentage' => 'integer', 'duration_years' => 'integer', 'duration_days' => 'integer', 'features' => 'array', 'is_active' => 'boolean', 'coverage_sqm' => 'decimal:2'];
     }
 
     public function getFormattedPriceAttribute(): string
     {
         return $this->is_free ? 'Free' : $this->currency.' $'.number_format($this->price / 100, 2);
+    }
+
+    public function getHasOfferAttribute(): bool
+    {
+        return ! $this->is_free && $this->offer_percentage > 0;
+    }
+
+    public function getOfferPriceAttribute(): int
+    {
+        if (! $this->has_offer) {
+            return $this->price;
+        }
+
+        return (int) round($this->price * (100 - $this->offer_percentage) / 100);
+    }
+
+    public function getFormattedOfferPriceAttribute(): string
+    {
+        return $this->is_free ? 'Free' : $this->currency.' $'.number_format($this->offer_price / 100, 2);
     }
 
     public function getIsFreeAttribute(): bool

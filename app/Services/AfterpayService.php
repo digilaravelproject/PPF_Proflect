@@ -40,7 +40,7 @@ class AfterpayService
             'phoneNumber' => $user->phone,
         ], fn ($value) => $value !== null && $value !== '');
 
-        $money = $this->money($plan->price, $plan->currency);
+        $money = $this->money($plan->offer_price, $plan->currency);
         $response = $this->client()->post('/v2/checkouts', [
             'amount' => $money,
             'consumer' => $consumer,

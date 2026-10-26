@@ -32,7 +32,7 @@ class StripeService
                 'quantity' => 1,
                 'price_data' => [
                     'currency' => strtolower($plan->currency),
-                    'unit_amount' => $plan->price,
+                    'unit_amount' => $plan->offer_price,
                     'product_data' => [
                         'name' => $plan->name,
                         'description' => 'Proflect Car Refresh Program (PCF) · '.$plan->duration_label,

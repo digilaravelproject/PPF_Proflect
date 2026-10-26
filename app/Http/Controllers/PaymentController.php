@@ -30,7 +30,7 @@ class PaymentController extends Controller
             $session = $stripe->createCheckoutSession($plan, $request->user());
             Payment::create([
                 'user_id' => $request->user()->id, 'plan_id' => $plan->id, 'gateway' => 'stripe', 'gateway_order_id' => $session['id'],
-                'amount' => $plan->price, 'currency' => $plan->currency, 'status' => 'created',
+                'amount' => $plan->offer_price, 'currency' => $plan->currency, 'status' => 'created',
                 'metadata' => ['pending_claim_id' => $request->session()->get('pending_claim_id'), 'warranty_code_id' => $selectedCode?->id, 'upgrade_from_subscription_id' => $activeSubscription?->id],
             ]);
 
@@ -83,7 +83,7 @@ class PaymentController extends Controller
                 'plan_id' => $plan->id,
                 'gateway' => 'afterpay',
                 'gateway_order_id' => $checkout['token'],
-                'amount' => $plan->price,
+                'amount' => $plan->offer_price,
                 'currency' => $plan->currency,
                 'status' => 'created',
                 'metadata' => [

@@ -237,6 +237,31 @@ document.querySelectorAll('[data-card-animate]').forEach((card) => {
     }
 });
 
+document.querySelectorAll('[data-plan-offer-form]').forEach((form) => {
+    const priceInput = form.querySelector('[data-plan-price]');
+    const offerInput = form.querySelector('[data-plan-offer]');
+    const preview = form.querySelector('[data-offer-preview]');
+    const offerPrice = form.querySelector('[data-offer-price]');
+    const saving = form.querySelector('[data-offer-saving]');
+
+    const syncOfferPrice = () => {
+        const price = Math.max(0, Number(priceInput?.value) || 0);
+        const percentage = Math.min(99, Math.max(0, Number(offerInput?.value) || 0));
+        const total = Math.round(price * 100 * (100 - percentage) / 100) / 100;
+        const discount = Math.round((price - total) * 100) / 100;
+
+        offerPrice.textContent = `AUD $${total.toFixed(2)}`;
+        saving.textContent = percentage > 0
+            ? `${percentage}% OFF · Customer saves AUD $${discount.toFixed(2)}`
+            : 'No offer applied';
+        preview.classList.toggle('has-offer', percentage > 0 && price > 0);
+    };
+
+    priceInput?.addEventListener('input', syncOfferPrice);
+    offerInput?.addEventListener('input', syncOfferPrice);
+    syncOfferPrice();
+});
+
 if (document.querySelector('.sidebar') && !document.querySelector('.menu-button')) {
     const menuButton = document.createElement('button');
     menuButton.type = 'button';
