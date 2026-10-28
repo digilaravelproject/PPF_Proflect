@@ -16,7 +16,10 @@
         <a class="{{ request()->routeIs('admin.plans.*')?'active':'' }}" href="{{ route('admin.plans.index') }}"><span>⚙</span>Subscription Plans</a>
         <details class="sidebar-nav-group" @if(request()->routeIs('admin.masters.*')) open @endif>
             <summary class="sidebar-nav-label"><span>⚙</span><b>Masters</b><i aria-hidden="true">⌄</i></summary>
-            <div class="sidebar-nav-dropdown"><a class="sidebar-submenu {{ request()->routeIs('admin.masters.upgrade-window.*')?'active':'' }}" href="{{ route('admin.masters.upgrade-window.edit') }}">Upgrade Window</a></div>
+            <div class="sidebar-nav-dropdown">
+                <a class="sidebar-submenu {{ request()->routeIs('admin.masters.upgrade-window.*')?'active':'' }}" href="{{ route('admin.masters.upgrade-window.edit') }}">Upgrade Window</a>
+                <a class="sidebar-submenu {{ request()->routeIs('admin.masters.qr-code.*')?'active':'' }}" href="{{ route('admin.masters.qr-code.edit') }}">QR Code</a>
+            </div>
         </details>
     </nav>
     <form method="POST" action="{{ route('admin.logout') }}">@csrf<button class="sidebar__logout"><span>↪</span>Sign out</button></form>

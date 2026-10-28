@@ -3,6 +3,7 @@
 use App\Http\Middleware\AdminAuthenticated;
 use App\Http\Middleware\EnsureOnboardingCompleted;
 use App\Http\Middleware\EnsureSubscriptionActive;
+use App\Http\Middleware\RequireQrAccess;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -15,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->validateCsrfTokens(except: ['payments/stripe/webhook']);
+        $middleware->web(append: [RequireQrAccess::class]);
         $middleware->alias([
             'admin.auth' => AdminAuthenticated::class,
             'onboarded' => EnsureOnboardingCompleted::class,

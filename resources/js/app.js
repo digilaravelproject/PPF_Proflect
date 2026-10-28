@@ -1,4 +1,26 @@
 import './bootstrap';
+import QRCode from 'qrcode';
+
+document.querySelectorAll('[data-qr-code]').forEach(async (canvas) => {
+    try {
+        await QRCode.toCanvas(canvas, canvas.dataset.qrUrl, {
+            errorCorrectionLevel: 'M',
+            margin: 2,
+            width: 450,
+            color: {dark: '#000000', light: '#ffffff'},
+        });
+    } catch (_) {
+        canvas.hidden = true;
+        document.querySelector('[data-qr-error]')?.removeAttribute('hidden');
+    }
+});
+
+document.querySelectorAll('[data-qr-access-toggle]').forEach((toggle) => {
+    toggle.addEventListener('change', () => {
+        const label = document.querySelector('[data-qr-toggle-label]');
+        if (label) label.textContent = toggle.checked ? 'Enabled' : 'Disabled';
+    });
+});
 
 const svgElement = (name) => document.createElementNS('http://www.w3.org/2000/svg', name);
 const validPanelArea = (points) => Array.isArray(points) && points.length === 4 && points.every((point) =>

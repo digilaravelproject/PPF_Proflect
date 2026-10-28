@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\PaymentController as AdminPaymentController;
 use App\Http\Controllers\Admin\PlanController as AdminPlanController;
 use App\Http\Controllers\Admin\PpfVariantController as AdminPpfVariantController;
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
+use App\Http\Controllers\Admin\QrCodeController as AdminQrCodeController;
 use App\Http\Controllers\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Admin\UpgradeWindowController as AdminUpgradeWindowController;
 use App\Http\Controllers\Admin\VehicleController as AdminVehicleController;
@@ -25,6 +26,7 @@ use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\QrAccessController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\VehicleCatalogController;
 use App\Models\Plan;
@@ -32,6 +34,13 @@ use App\Models\VehicleModel;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+
+Route::get('/qr_code', [QrAccessController::class, 'show'])->name('qr-code.show');
+Route::get('/qr-code', [QrAccessController::class, 'show'])->name('qr-code.legacy');
+Route::get('/qr-access/{token}', [QrAccessController::class, 'enter'])
+    ->where('token', '[A-Za-z0-9_-]{32,128}')
+    ->middleware('throttle:30,1')
+    ->name('qr-access.enter');
 
 Route::get('/', function () {
     $currentSubscription = auth()->check() && Schema::hasTable('subscriptions') ? auth()->user()->subscriptions()
@@ -41,7 +50,7 @@ Route::get('/', function () {
         'plans' => Schema::hasTable('plans') ? Plan::query()->where('is_active', true)->orderBy('sort_order')->get() : collect(),
         'currentSubscription' => $currentSubscription,
     ]);
-});
+})->name('home');
 
 Route::view('/terms-of-service', 'legal.terms')->name('terms');
 Route::view('/privacy-policy', 'legal.privacy')->name('privacy');
@@ -124,6 +133,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('plans', AdminPlanController::class)->except('show');
         Route::get('/masters/upgrade-window', [AdminUpgradeWindowController::class, 'edit'])->name('masters.upgrade-window.edit');
         Route::put('/masters/upgrade-window', [AdminUpgradeWindowController::class, 'update'])->name('masters.upgrade-window.update');
+        Route::get('/masters/qr-code', [AdminQrCodeController::class, 'edit'])->name('masters.qr-code.edit');
+        Route::put('/masters/qr-code', [AdminQrCodeController::class, 'update'])->name('masters.qr-code.update');
         Route::resource('customers', AdminCustomerController::class)->except('show');
         Route::resource('vehicles', AdminVehicleController::class)->parameters(['vehicles' => 'vehicle']);
         Route::patch('/vehicles/{vehicle}/toggle', [AdminVehicleController::class, 'toggle'])->name('vehicles.toggle');
