@@ -28,16 +28,7 @@
                 <form method="POST" action="{{ route('logout') }}">@csrf<button>Sign out</button></form>
             </div>
         </header>
-        <section class="offer-hero">
-            <div>
-                <span class="eyebrow eyebrow--light">EXCLUSIVE CUSTOMER OFFER</span>
-                <h1>Keep your PPF protected<br />after the unexpected.</h1>
-                <p>Optional accidental-damage replacement support for eligible Proflect PPF customers.</p>
-            </div>
-            <div class="offer-car" aria-hidden="true">
-                <img src="{{ asset('images/rolls-royce-spectre-series-ii-cutout.png') }}" alt="" />
-            </div>
-        </section>
+        <x-protection-video />
         <main class="offer-main">
             @if(session('status'))
             <div class="alert alert--success">{{ session('status') }}</div>
@@ -153,7 +144,16 @@
                 @endforeach
             </div>
             @endif
-            <x-protection-video />                
+            <section class="offer-hero mt-4">
+                <div>
+                    <span class="eyebrow eyebrow--light">EXCLUSIVE CUSTOMER OFFER</span>
+                    <h1>Keep your PPF protected<br />after the unexpected.</h1>
+                    <p>Optional accidental-damage replacement support for eligible Proflect PPF customers.</p>
+                </div>
+                <div class="offer-car" aria-hidden="true">
+                    <img src="{{ asset('images/rolls-royce-spectre-series-ii-cutout.png') }}" alt="" />
+                </div>
+            </section>                
             <div class="covered-grid">
                 <div>
                     <i>✓</i>
