@@ -425,14 +425,18 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
         renderEmptyModel();
         if (!vehicleModel.value) return;
         try {
-            const response = await fetch(`${form.dataset.catalogModelsUrl}/${encodeURIComponent(vehicleModel.value)}`, {headers: {'Accept': 'application/json'}});
+            const response = await fetch(`${form.dataset.catalogModelsUrl}/${encodeURIComponent(vehicleModel.value)}?fresh=${Date.now()}`, {
+                cache: 'no-store',
+                headers: {'Accept': 'application/json', 'Cache-Control': 'no-cache'},
+            });
             if (!response.ok) throw new Error('Could not load model details.');
             const model = await response.json();
             if (request !== modelRequest) return;
             selectedModelData = model;
             panelContainer.replaceChildren();
             const limit = wizard.querySelector('[data-model-coverage]');
-            limit.textContent = `Model area limit: ${Number(model.coverage_sqm).toFixed(2)} m² (all selected panels combined).`;
+            const mappedPanelCount = model.panels.filter((panel) => validPanelArea(panel.photo_polygon)).length;
+            limit.textContent = `${model.panels.length} panels configured · ${mappedPanelCount} drawable areas · model limit ${Number(model.coverage_sqm).toFixed(2)} m².`;
             model.panels.forEach((panel) => {
                 const label = document.createElement('label');
                 const input = document.createElement('input');
@@ -442,7 +446,12 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
                 input.checked = oldPanels.has(panel.key);
                 input.addEventListener('change', syncPanels);
                 const name = document.createElement('span');
-                name.textContent = panel.name;
+                name.className = 'panel-option-copy';
+                const panelName = document.createElement('b');
+                panelName.textContent = panel.name;
+                const panelMeta = document.createElement('small');
+                panelMeta.textContent = `${Number(panel.area_limit_sqm || 0).toFixed(2)} m²${validPanelArea(panel.photo_polygon) ? ' · drawable area' : ''}`;
+                name.append(panelName, panelMeta);
                 label.append(input, name); panelContainer.append(label); panelInputs.push(input);
             });
             const img = modelPhoto.querySelector('img');
@@ -474,6 +483,14 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
                 });
                 const title = svgElement('title'); title.textContent = panel.name; area.append(title);
                 areas.append(area);
+                const label = svgElement('text');
+                label.setAttribute('x', String(panel.photo_polygon.reduce((sum, point) => sum + Number(point.x), 0) / panel.photo_polygon.length));
+                label.setAttribute('y', String(panel.photo_polygon.reduce((sum, point) => sum + Number(point.y), 0) / panel.photo_polygon.length));
+                label.setAttribute('class', 'model-panel-label');
+                label.setAttribute('text-anchor', 'middle');
+                label.setAttribute('dominant-baseline', 'middle');
+                label.textContent = panel.name;
+                areas.append(label);
             });
             if (model.photo_url) {
                 modelPhoto.querySelector('small').textContent = areas.childElementCount

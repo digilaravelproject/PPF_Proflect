@@ -25,6 +25,6 @@ class VehicleCatalogController extends Controller
             'id' => $model->id, 'name' => $model->name, 'kind' => $model->kind, 'coverage_sqm' => $model->coverage_sqm,
             'make_name' => $model->make->name, 'photo_url' => $model->photo_url,
             'panels' => $model->panels()->orderBy('id')->get(['key', 'name', 'area_limit_sqm', 'photo_polygon']),
-        ]);
+        ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     }
 }

@@ -144,7 +144,7 @@
                             Start free for {{ $plan->duration_days }} days <span>→</span>
                         </button>
                     </form>
-                    >@else<a class="button button--dark" href="{{ route('subscription.checkout', ['plan' => $plan, 'warranty_code_id' => $selectedWarrantyCard->id]) }}"
+                    @else<a class="button button--dark" href="{{ route('subscription.checkout', ['plan' => $plan, 'warranty_code_id' => $selectedWarrantyCard->id]) }}"
                         >{{ $selectedWarrantyCard->subscription_id ? 'Upgrade to' : 'Choose' }} {{ $plan->name }} <span>→</span></a
                     >@endif
                 </article>

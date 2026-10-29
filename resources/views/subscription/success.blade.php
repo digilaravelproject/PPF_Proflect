@@ -27,7 +27,7 @@
             <div><span>TERM</span><b>{{ $subscription->plan->duration_label }}</b></div>
         </div>
     </section>
-    <div class="confirmation-note"><span>🚗</span><p><b>Your protection follows your registered vehicle.</b><br>Your subscription email includes your warranty code. You can request the code again from your dashboard.</p></div>
+    <div class="confirmation-note"><span>🚗</span><p><b style="color: black !important;">Your protection follows your registered vehicle.</b><br>Your subscription email includes your warranty code. You can request the code again from your dashboard.</p></div>
     @if($claim ?? null)
         <a href="{{ route('claims.show',$claim) }}" class="button button--dark">Claim submitted successfully <span>→</span></a>
     @else
