@@ -40,17 +40,17 @@
                 <div class="landing-films__intro"><span>2 SHORT FILMS</span><p>Discover how Proflect helps preserve the details that make your vehicle feel exceptional.</p></div>
             </div>
             <div class="landing-film-grid">
-                <button class="landing-film landing-film--one" type="button" data-video-open data-video-src="{{ asset('videos/care-refresh-01.mp4') }}" data-video-title="The Proflect finish">
-                    <img class="landing-film__media" src="{{ asset('images/proflect-video-poster.jpg') }}" alt="A Proflect technician applying paint protection film to a vehicle">
+                <button class="landing-film landing-film--one" type="button" data-video-open data-video-src="{{ asset('videos/care-refresh-01.mp4') }}" data-video-title="The Proflect Warranty">
+                    <img class="landing-film__media" src="{{ asset('images/care-refresh-program-cover.jpg') }}" alt="Proflect Car Refresh Program video cover">
                     <span class="landing-film__veil"></span>
                     <span class="landing-film__topline"><span class="landing-film__number">FILM 01</span><span class="landing-film__watch">WATCH NOW <b>↗</b></span></span>
                     <span class="landing-film__content">
                         <span class="landing-film__play" aria-hidden="true">
                             <svg viewBox="0 0 24 24"><path d="M9 7.5 16 12l-7 4.5z"/></svg>
                         </span>
-                        <span class="landing-film__copy"><small>01:18 · THE PROFLECT STORY</small><b>The Proflect finish</b><span>Experience a cleaner, more confident drive.</span></span>
+                        <span class="landing-film__copy"><small>01:18 · THE PROFLECT STORY</small><b>The Proflect Warranty</b><span>Experience a cleaner, more confident drive.</span></span>
                     </span>
-                    <span class="sr-only">Play The Proflect finish video</span>
+                    <span class="sr-only">Play The Proflect Warranty video</span>
                 </button>
                 <?php /*<button class="landing-film landing-film--two" type="button" data-video-open data-video-src="{{ asset('videos/care-refresh-02.mp4') }}" data-video-title="Refresh with confidence">
                     <img class="landing-film__media" src="{{ asset('videos/care-refresh-02-poster.jpg') }}" alt="" aria-hidden="true">

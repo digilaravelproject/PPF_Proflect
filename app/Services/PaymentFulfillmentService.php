@@ -29,6 +29,17 @@ class PaymentFulfillmentService
                 return $existing;
             }
 
+            $selectedWarrantyCode = isset($locked->metadata['warranty_code_id']) ? (int) $locked->metadata['warranty_code_id'] : null;
+            if ($selectedWarrantyCode) {
+                $card = WarrantyCode::query()->whereKey($selectedWarrantyCode)->where('used_by_user_id', $locked->user_id)
+                    ->whereDoesntHave('claim')->lockForUpdate()->firstOrFail();
+                $duplicate = WarrantyCode::query()->where('used_by_user_id', $locked->user_id)->where('id', '!=', $card->id)
+                    ->whereHas('subscription', fn ($query) => $query->where('plan_id', $locked->plan_id))->first();
+                if ($duplicate || $card->subscription?->plan_id === $locked->plan_id) {
+                    throw new \RuntimeException('This plan is already assigned to one of the customer’s warranty cards.');
+                }
+            }
+
             $locked->update([
                 'gateway_payment_id' => $gatewayPayment['gateway_payment_id'] ?? $gatewayPayment['payment_intent_id'],
                 'status' => 'paid',
@@ -49,7 +60,6 @@ class PaymentFulfillmentService
                 Subscription::query()->whereKey($upgradeFrom)->where('user_id', $locked->user_id)->update(['status' => 'upgraded']);
             }
             $locked->user()->update(['onboarding_completed_at' => now()]);
-            $selectedWarrantyCode = isset($locked->metadata['warranty_code_id']) ? (int) $locked->metadata['warranty_code_id'] : null;
             if ($selectedWarrantyCode) {
                 WarrantyCode::query()->whereKey($selectedWarrantyCode)->where('used_by_user_id', $locked->user_id)
                     ->update(['subscription_id' => $subscription->id]);

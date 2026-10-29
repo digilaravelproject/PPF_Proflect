@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\WarrantyCode;
+use App\Models\PpfVariant;
 use App\Services\WarrantyCodeService;
 use App\Services\WarrantyCodeSheetReader;
 use Illuminate\Database\Eloquent\Builder;
@@ -26,17 +27,17 @@ class WarrantyCodeController extends Controller
             'to' => ['nullable', 'date', 'after_or_equal:from'],
         ]);
 
-        $codes = WarrantyCode::withTrashed()->with(['usedBy', 'claim', 'subscription.user'])
+        $codes = WarrantyCode::withTrashed()->with(['usedBy', 'claim', 'subscription.user', 'ppfVariant'])
             ->when($request->filled('search'), function (Builder $query) use ($request): void {
                 $search = trim($request->string('search')->toString());
                 $query->where(fn (Builder $query) => $query->where('code', 'like', "%{$search}%")
                     ->orWhereHas('usedBy', fn (Builder $query) => $query->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"))
                     ->orWhereHas('subscription.user', fn (Builder $query) => $query->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")));
             })
-            ->when($request->string('status')->toString() === 'available', fn (Builder $query) => $query->whereNull('deleted_at')->whereNull('used_at')->where('is_active', true)->where('expires_at', '>', now()))
-            ->when($request->string('status')->toString() === 'used', fn (Builder $query) => $query->whereNotNull('used_at')->whereNull('deleted_at'))
-            ->when($request->string('status')->toString() === 'inactive', fn (Builder $query) => $query->whereNull('used_at')->where('is_active', false)->whereNull('deleted_at'))
-            ->when($request->string('status')->toString() === 'expired', fn (Builder $query) => $query->whereNull('used_at')->where('is_active', true)->where('expires_at', '<=', now())->whereNull('deleted_at'))
+            ->when($request->string('status')->toString() === 'available', fn (Builder $query) => $query->whereNull('deleted_at')->whereDoesntHave('claim')->where('is_active', true)->where('expires_at', '>', now()))
+            ->when($request->string('status')->toString() === 'used', fn (Builder $query) => $query->whereHas('claim')->whereNull('deleted_at'))
+            ->when($request->string('status')->toString() === 'inactive', fn (Builder $query) => $query->whereDoesntHave('claim')->where('is_active', false)->whereNull('deleted_at'))
+            ->when($request->string('status')->toString() === 'expired', fn (Builder $query) => $query->whereDoesntHave('claim')->where('is_active', true)->where('expires_at', '<=', now())->whereNull('deleted_at'))
             ->when($request->string('status')->toString() === 'deleted', fn (Builder $query) => $query->onlyTrashed())
             ->when($request->filled('from'), fn (Builder $query) => $query->whereDate('created_at', '>=', $request->date('from')))
             ->when($request->filled('to'), fn (Builder $query) => $query->whereDate('created_at', '<=', $request->date('to')))
@@ -44,7 +45,9 @@ class WarrantyCodeController extends Controller
 
         $validityMonths = $codeService->validityMonths();
 
-        return view('admin.warranty-codes.index', compact('codes', 'validityMonths'));
+        $ppfVariants = PpfVariant::query()->orderBy('name')->get();
+
+        return view('admin.warranty-codes.index', compact('codes', 'validityMonths', 'ppfVariants'));
     }
 
     public function store(Request $request, WarrantyCodeService $codes): RedirectResponse
@@ -123,6 +126,14 @@ class WarrantyCodeController extends Controller
             : ['is_active' => true, 'activated_at' => now(), 'expires_at' => now()->addMonthsNoOverflow($code->validity_months)]);
 
         return back()->with('status', "Warranty code {$code->code} is now ".($code->is_active ? 'active.' : 'inactive.'));
+    }
+
+    public function updateVariant(Request $request, int $warrantyCode): RedirectResponse
+    {
+        $validated = $request->validate(['ppf_variant_id' => ['nullable', 'integer', 'exists:ppf_variants,id']]);
+        WarrantyCode::query()->findOrFail($warrantyCode)->update(['ppf_variant_id' => $validated['ppf_variant_id'] ?? null]);
+
+        return back()->with('status', 'PPF variant updated.');
     }
 
     public function destroy(int $warrantyCode): RedirectResponse

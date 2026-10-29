@@ -33,7 +33,7 @@
             @if(session('status'))
             <div class="alert alert--success">{{ session('status') }}</div>
             @endif @if($errors->any())
-            <div class="alert payment-error">{{ $errors->first() }}</div>
+            <div class="alert payment-error subscription-toast" role="alert"><b>Proflect</b><span>{{ $errors->first() }}</span><button type="button" onclick="this.parentElement.remove()" aria-label="Close">×</button></div>
             @endif @if(session('claim_subscription_flow'))
             <div class="subscription-expired" role="status">
                 <span>2</span>
@@ -58,6 +58,14 @@
                     </p>
                 </div>
             </div>
+            @endif
+            @if($selectedWarrantyCard)
+            <div class="subscription-card-context" role="status">
+                <div><span class="eyebrow">SUBSCRIPTION FOR WARRANTY CARD</span><b>{{ $selectedWarrantyCard->code }}</b></div>
+                <span>{{ $selectedWarrantyCard->subscription?->plan?->name ? 'Current plan: '.$selectedWarrantyCard->subscription->plan->name : 'Choose a plan for this card' }}</span>
+            </div>
+            @else
+            <div class="subscription-expired" role="alert"><span>!</span><div><b>Add a warranty card first.</b><p>Every subscription belongs to one warranty card.</p></div></div>
             @endif
             <div class="stepper">
                 <span class="active"><i>1</i>Choose a plan</span><b></b><span><i>2</i>Checkout</span><b></b
@@ -88,7 +96,7 @@
             </div>
             @else
             <div class="plan-cards">
-                @foreach($plans as $plan)@php($isCurrent=$currentSubscription?->plan_id === $plan->id)
+                @foreach($plans as $plan)@php($isCurrent=$selectedWarrantyCard?->subscription?->plan_id === $plan->id)
                 <article class="plan-card plan-card--{{ $plan->accent }} {{ $isCurrent ? 'plan-card--current' : '' }}">
                     @if($loop->last)<span class="popular-badge">MOST POPULAR</span>@endif
                     <div class="plan-card__head">
@@ -121,24 +129,23 @@
                         <li>✓ <span>{{ $feature }}</span></li>
                         @endforeach
                     </ul>
-                    @if($isCurrent)<button class="button button--unavailable" type="button" disabled>
-                        Current plan</button
+                    @if(!$selectedWarrantyCard)<a class="button button--dark" href="{{ route('claims.warranty.create') }}">Add warranty card <span>→</span></a
+                    >@elseif($isCurrent)<button class="button button--unavailable" type="button" disabled>
+                        Current plan on {{ $selectedWarrantyCard->code }}</button
                     >@elseif($plan->is_free && $usedFreePlanIds->contains($plan->id))<button
                         class="button button--unavailable"
                         type="button"
                         disabled
                     >
                         Free trial already used</button
-                    >@elseif($plan->is_free && !$currentSubscription)
+                    >@elseif($plan->is_free)
                     <form method="POST" action="{{ route('subscription.free',$plan) }}">
-                        @csrf<button class="button button--dark" type="submit">
+                        @csrf<input type="hidden" name="warranty_code_id" value="{{ $selectedWarrantyCard->id }}"><button class="button button--dark" type="submit">
                             Start free for {{ $plan->duration_days }} days <span>→</span>
                         </button>
                     </form>
-                    @elseif($plan->is_free)<button class="button button--unavailable" type="button" disabled>
-                        Trial unavailable</button
-                    >@else<a class="button button--dark" href="{{ route('subscription.checkout',$plan) }}"
-                        >{{ $currentSubscription ? 'Upgrade to' : 'Choose' }} {{ $plan->name }} <span>→</span></a
+                    >@else<a class="button button--dark" href="{{ route('subscription.checkout', ['plan' => $plan, 'warranty_code_id' => $selectedWarrantyCard->id]) }}"
+                        >{{ $selectedWarrantyCard->subscription_id ? 'Upgrade to' : 'Choose' }} {{ $plan->name }} <span>→</span></a
                     >@endif
                 </article>
                 @endforeach

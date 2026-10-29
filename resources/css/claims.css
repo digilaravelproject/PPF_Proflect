@@ -4,3 +4,4 @@
 .photo-previews video{display:block;width:100%;height:105px;border-radius:6px;background:#111;object-fit:contain}
 .review-photo-strip video{width:110px;height:76px;border-radius:5px;background:#111}
 .claim-photo-grid video{width:100%;height:180px;border-radius:7px;background:#111}
+.claim-limit-toast{position:fixed;right:24px;bottom:24px;z-index:90;width:min(390px,calc(100vw - 32px));display:grid;grid-template-columns:1fr auto;gap:5px 12px;border:1px solid #8a641f;border-left:5px solid #e7b457;border-radius:9px;padding:16px 18px;color:#fff;background:#201b12;box-shadow:0 18px 45px rgba(0,0,0,.45)}.claim-limit-toast[hidden]{display:none}.claim-limit-toast b{grid-column:1;font-size:14px}.claim-limit-toast span{grid-column:1;color:#eadbbd;font-size:12px;line-height:1.45}.claim-limit-toast button{grid-column:2;grid-row:1/3;align-self:start;border:0;color:#fff;background:transparent;font-size:22px;cursor:pointer}

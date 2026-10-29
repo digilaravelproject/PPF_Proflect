@@ -83,7 +83,7 @@
 
     <div class="admin-table-wrap">
         <table class="admin-table">
-            <thead><tr><th>Warranty code</th><th>Status</th><th>Customer</th><th>Activation date</th><th>Setting</th><th>Expires</th><th>Created</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Warranty code</th><th>Status</th><th>Customer</th><th>Activation date</th><th>Setting</th><th>Expires</th><th>PPF variant</th><th>Actions</th></tr></thead>
             <tbody>
                 @forelse($codes as $code)
                     <tr>
@@ -93,7 +93,7 @@
                         <td>{{ $code->activated_at?->format('d M Y') ?: 'Not activated' }}</td>
                         <td>@unless($code->trashed() || $code->used_at)<form method="POST" action="{{ route('admin.warranty-codes.toggle', $code->id) }}">@csrf @method('PATCH')<button class="code-toggle {{ $code->is_active ? 'on' : '' }}" title="{{ $code->is_active ? 'Deactivate' : 'Activate' }} code" aria-label="{{ $code->is_active ? 'Deactivate' : 'Activate' }} code"><i></i></button></form>@else — @endunless</td>
                         <td>{{ $code->expires_at?->format('d M Y') ?: 'Starts on activation' }}</td>
-                        <td>{{ $code->created_at->format('d M Y') }}</td>
+                        <td><form method="POST" action="{{ route('admin.warranty-codes.variant', $code->id) }}" class="variant-inline-form">@csrf @method('PATCH')<select name="ppf_variant_id" aria-label="PPF variant for warranty card {{ $code->code }}" onchange="this.form.submit()"><option value="">Select variant</option>@foreach($ppfVariants as $variant)<option value="{{ $variant->id }}" @selected($code->ppf_variant_id === $variant->id)>{{ $variant->name }}</option>@endforeach</select><noscript><button>Save</button></noscript></form></td>
                         <td><div class="table-actions"><a class="icon-action" href="{{ route('admin.warranty-codes.show', $code->id) }}" title="View code" aria-label="View code"><x-eye-icon/></a>@unless($code->trashed())<form method="POST" action="{{ route('admin.warranty-codes.destroy', $code->id) }}" onsubmit="return confirm('Delete this warranty code?')">@csrf @method('DELETE')<button class="icon-action icon-action--danger" title="Delete code" aria-label="Delete code">×</button></form>@endunless</div></td>
                     </tr>
                 @empty

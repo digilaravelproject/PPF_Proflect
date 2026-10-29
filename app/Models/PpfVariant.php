@@ -6,4 +6,5 @@ class PpfVariant extends Model {
     protected $fillable = ['name', 'description', 'is_active'];
     protected function casts(): array { return ['is_active' => 'boolean']; }
     public function claims(): HasMany { return $this->hasMany(Claim::class); }
+    public function warrantyCodes(): HasMany { return $this->hasMany(WarrantyCode::class); }
 }

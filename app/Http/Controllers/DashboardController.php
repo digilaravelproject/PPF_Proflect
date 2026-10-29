@@ -18,7 +18,7 @@ class DashboardController extends Controller
         return view('dashboard', [
             'subscription' => $subscription,
             'warrantyCode' => $warrantyCode,
-            'warrantyCards' => auth()->user()->usedWarrantyCodes()->with(['subscription', 'claim'])->latest('used_at')->get(),
+            'warrantyCards' => auth()->user()->usedWarrantyCodes()->with(['subscription.plan', 'claim'])->latest('used_at')->get(),
         ]);
     }
 

@@ -25,11 +25,15 @@ class SubscriptionController extends Controller
     {
         $currentSubscription = $request->user()->subscriptions()
             ->with('plan')->where('status', 'active')->where('ends_at', '>', now())->latest()->first();
-        $warrantyCards = $request->user()->usedWarrantyCodes()->latest('used_at')->get();
+        $warrantyCards = $request->user()->usedWarrantyCodes()->with(['subscription.plan', 'claim'])->latest('used_at')->get();
         $warrantyCards->each(function (WarrantyCode $code) use ($eligibility): void {
             $code->setAttribute('upgrade_deadline', $eligibility->deadline($code));
             $code->setAttribute('upgrade_eligible', $eligibility->isEligible($code));
         });
+        $selectedWarrantyCard = $warrantyCards->firstWhere('id', (int) ($request->input('warranty_code_id') ?: $request->session()->get('subscribing_warranty_code_id')))
+            ?? $warrantyCards->first(fn (WarrantyCode $card) => ! $card->subscription_id && ! $card->claim)
+            ?? $warrantyCards->first();
+        if ($selectedWarrantyCard) $request->session()->put('subscribing_warranty_code_id', $selectedWarrantyCard->id);
 
         $expiredSubscription = $request->user()->subscriptions()
             ->with('plan')
@@ -46,40 +50,64 @@ class SubscriptionController extends Controller
             'currentSubscription' => $currentSubscription,
             'warrantyCards' => $warrantyCards,
             'upgradeWindowMonths' => $eligibility->windowMonths(),
+            'selectedWarrantyCard' => $selectedWarrantyCard,
         ]);
     }
 
-    public function checkout(Request $request, Plan $plan, UpgradeEligibilityService $eligibility): View
+    public function checkout(Request $request, Plan $plan, UpgradeEligibilityService $eligibility): View|RedirectResponse
     {
         abort_unless($plan->is_active && ! $plan->is_free, 404);
         $currentSubscription = $request->user()->subscriptions()
             ->with('plan')->where('status', 'active')->where('ends_at', '>', now())->latest()->first();
-        if ($currentSubscription?->plan_id === $plan->id) {
-            return redirect()->route('subscription.index')->withErrors(['plan' => 'This is already your current plan.']);
-        }
-        $warrantyCards = $request->user()->usedWarrantyCodes()->latest('used_at')->get();
+        $warrantyCards = $request->user()->usedWarrantyCodes()->with(['subscription.plan', 'claim'])->latest('used_at')->get();
         $warrantyCards->each(function (WarrantyCode $code) use ($eligibility): void {
             $code->setAttribute('upgrade_deadline', $eligibility->deadline($code));
             $code->setAttribute('upgrade_eligible', $eligibility->isEligible($code));
         });
+        $selectedCardId = $request->input('warranty_code_id') ?: $request->session()->get('subscribing_warranty_code_id') ?: $warrantyCards->first()?->id;
+        $selectedWarrantyCard = $eligibility->validateSelection($request->user(), $selectedCardId ? (int) $selectedCardId : null);
+        if ($selectedWarrantyCard->subscription?->plan_id === $plan->id) {
+            return redirect()->route('subscription.index', ['warranty_code_id' => $selectedWarrantyCard->id])
+                ->withErrors(['plan' => 'Warranty card '.$selectedWarrantyCard->code.' already has '.$plan->name.'.']);
+        }
+        $duplicate = $request->user()->usedWarrantyCodes()->with('subscription.plan')
+            ->where('id', '!=', $selectedWarrantyCard->id)
+            ->whereHas('subscription', fn ($query) => $query->where('plan_id', $plan->id))
+            ->first();
+        if ($duplicate) {
+            return redirect()->route('subscription.index', ['warranty_code_id' => $selectedWarrantyCard->id])
+                ->withErrors(['plan' => 'You already have '.$plan->name.' on warranty card '.$duplicate->code.'.']);
+        }
 
-        return view('subscription.checkout', compact('plan', 'currentSubscription', 'warrantyCards'));
+        return view('subscription.checkout', compact('plan', 'currentSubscription', 'warrantyCards', 'selectedWarrantyCard'));
     }
 
     public function activateFree(Request $request, Plan $plan, CustomerNotificationService $notifications, WarrantyCodeService $codes, PendingClaimService $pendingClaims): RedirectResponse
     {
         abort_unless($plan->is_active && $plan->is_free && $plan->duration_days, 404);
-        if ($request->user()->subscriptions()->where('status', 'active')->where('ends_at', '>', now())->exists()) {
-            return redirect()->route('subscription.index')->withErrors(['plan' => 'An active plan cannot be replaced by the free trial.']);
+        $validated = $request->validate(['warranty_code_id' => ['nullable', 'integer']]);
+        $selectedCodeId = $validated['warranty_code_id'] ?? $request->session()->get('subscribing_warranty_code_id')
+            ?? $request->user()->usedWarrantyCodes()->whereDoesntHave('claim')->value('id');
+        $selectedCode = $request->user()->usedWarrantyCodes()->with('claim')->whereKey($selectedCodeId)->first();
+        if (! $selectedCode || ! $selectedCode->isAvailableForClaim()) {
+            return back()->withErrors(['warranty_code_id' => 'Select an available warranty card.']);
         }
 
         $pendingClaimId = $request->session()->get('pending_claim_id');
-        $subscription = DB::transaction(function () use ($request, $plan, $pendingClaimId): Subscription {
+        $subscription = DB::transaction(function () use ($request, $plan, $pendingClaimId, $selectedCode): Subscription {
             $user = $request->user()->newQuery()->whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
             $alreadyClaimed = Subscription::query()
                 ->where('user_id', $user->id)
                 ->where('plan_id', $plan->id)
                 ->exists();
+
+            $duplicateCode = WarrantyCode::query()->where('used_by_user_id', $user->id)->where('id', '!=', $selectedCode->id)
+                ->whereHas('subscription', fn ($query) => $query->where('plan_id', $plan->id))->first();
+            if ($duplicateCode) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'plan' => 'You already have '.$plan->name.' on warranty card '.$duplicateCode->code.'.',
+                ]);
+            }
 
             if (! $alreadyClaimed) {
                 $payment = Payment::create([
@@ -106,10 +134,8 @@ class SubscriptionController extends Controller
             }
 
             $user->update(['onboarding_completed_at' => now()]);
-            if (! Claim::query()->where('user_id', $user->id)->where('status', 'awaiting_subscription')->exists()) {
-                WarrantyCode::query()->where('used_by_user_id', $user->id)->whereNull('subscription_id')
-                    ->latest('used_at')->limit(1)->update(['subscription_id' => $subscription->id]);
-            }
+            WarrantyCode::query()->whereKey($selectedCode->id)->where('used_by_user_id', $user->id)
+                ->update(['subscription_id' => $subscription->id]);
 
             return $subscription;
         });
@@ -132,6 +158,7 @@ class SubscriptionController extends Controller
         }
 
         $pendingClaims->finalizeFor($subscription, $pendingClaimId ? (int) $pendingClaimId : null);
+        $request->session()->forget('subscribing_warranty_code_id');
 
         return redirect()->route('subscription.success');
     }

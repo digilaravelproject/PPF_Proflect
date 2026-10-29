@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class VehicleModelPanel extends Model
 {
-    protected $fillable = ['vehicle_model_id', 'key', 'name', 'min_sqm', 'max_sqm', 'photo_x', 'photo_y', 'photo_polygon'];
+    protected $fillable = ['vehicle_model_id', 'key', 'name', 'area_limit_sqm', 'min_sqm', 'max_sqm', 'photo_x', 'photo_y', 'photo_polygon'];
 
     protected function casts(): array { return ['photo_polygon' => 'array']; }
 

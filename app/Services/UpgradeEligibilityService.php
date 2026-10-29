@@ -39,6 +39,9 @@ class UpgradeEligibilityService
         if (! $code) {
             throw ValidationException::withMessages(['warranty_code_id' => 'The selected warranty card does not belong to your account.']);
         }
+        if (! $code->isAvailableForClaim()) {
+            throw ValidationException::withMessages(['warranty_code_id' => 'Warranty card '.$code->code.' has already been used for a claim or is no longer available.']);
+        }
         if (! $this->isEligible($code)) {
             $deadline = $this->deadline($code);
             throw ValidationException::withMessages(['warranty_code_id' => $deadline

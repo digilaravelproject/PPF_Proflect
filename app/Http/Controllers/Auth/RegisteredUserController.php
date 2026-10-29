@@ -74,6 +74,7 @@ class RegisteredUserController extends Controller
         $notifications->registration($user);
         Auth::login($user);
         $request->session()->regenerate();
+        $request->session()->put('subscribing_warranty_code_id', $user->usedWarrantyCodes()->latest('used_at')->value('id'));
 
         return redirect()->route('subscription.index')->with('status', 'Welcome to Proflect. Choose a protection plan or skip for now.');
     }

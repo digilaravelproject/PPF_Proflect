@@ -35,7 +35,7 @@ class ClaimWarrantyController extends Controller
     {
         $validated = $request->validate(['warranty_code' => ['required', 'digits:5']]);
 
-        DB::transaction(function () use ($request, $validated): void {
+        $warrantyCode = DB::transaction(function () use ($request, $validated): WarrantyCode {
             $warrantyCode = WarrantyCode::withTrashed()
                 ->where('code', $validated['warranty_code'])
                 ->lockForUpdate()
@@ -50,9 +50,14 @@ class ClaimWarrantyController extends Controller
                 'used_by_user_id' => $request->user()->id,
                 'used_at' => now(),
             ]);
+
+            return $warrantyCode;
         });
 
-        return redirect()->route('dashboard')->with('status', 'Warranty card added. You can select it when making a claim.');
+        $request->session()->put('subscribing_warranty_code_id', $warrantyCode->id);
+
+        return redirect()->route('subscription.index', ['warranty_code_id' => $warrantyCode->id])
+            ->with('status', 'Warranty card added. Choose a subscription for card '.$warrantyCode->code.'.');
     }
 
     private function availabilityResponse(WarrantyCode $code): array

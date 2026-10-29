@@ -156,6 +156,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/warranty-codes/sample', [AdminWarrantyCodeController::class, 'downloadSample'])->name('warranty-codes.sample');
         Route::get('/warranty-codes/{warrantyCode}', [AdminWarrantyCodeController::class, 'show'])->name('warranty-codes.show');
         Route::patch('/warranty-codes/{warrantyCode}/toggle', [AdminWarrantyCodeController::class, 'toggle'])->name('warranty-codes.toggle');
+        Route::patch('/warranty-codes/{warrantyCode}/variant', [AdminWarrantyCodeController::class, 'updateVariant'])->name('warranty-codes.variant');
+        Route::patch('/warranty-codes/{warrantyCode}/variant', [AdminWarrantyCodeController::class, 'updateVariant'])->name('warranty-codes.variant');
         Route::delete('/warranty-codes/{warrantyCode}', [AdminWarrantyCodeController::class, 'destroy'])->name('warranty-codes.destroy');
         Route::get('/reports', [AdminReportController::class, 'index'])->name('reports.index');
         Route::get('/reports/export', [AdminReportController::class, 'export'])->name('reports.export');

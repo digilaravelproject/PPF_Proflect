@@ -111,6 +111,8 @@ class VehicleModelController extends Controller
             'coverage_sqm' => ['required', 'numeric', 'min:0.01', 'max:5'],
             'panels' => ['required', 'array', 'min:1'],
             'panels.*.name' => ['required', 'string', 'max:100'],
+            'panels.*.area_limit_sqm' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'panels.*.max_sqm' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'panels.*.photo_polygon' => ['nullable', 'string', 'max:500'],
         ]);
     }
@@ -125,7 +127,7 @@ class VehicleModelController extends Controller
             }
             $keys[] = $key;
             $polygon = $this->parsePolygon($panel['photo_polygon'] ?? null);
-            $model->panels()->create(['key' => $key, 'name' => $panel['name'], 'min_sqm' => null, 'max_sqm' => null, 'photo_polygon' => $polygon]);
+            $model->panels()->create(['key' => $key, 'name' => $panel['name'], 'area_limit_sqm' => $panel['area_limit_sqm'] ?? $panel['max_sqm'] ?? 0, 'min_sqm' => null, 'max_sqm' => null, 'photo_polygon' => $polygon]);
         }
     }
 

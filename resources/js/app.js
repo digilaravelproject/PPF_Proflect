@@ -438,6 +438,7 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
                 const input = document.createElement('input');
                 input.type = 'checkbox'; input.name = 'panels[]'; input.value = panel.key;
                 input.dataset.panelInput = '';
+                input.dataset.panelArea = String(Number(panel.area_limit_sqm || 0));
                 input.checked = oldPanels.has(panel.key);
                 input.addEventListener('change', syncPanels);
                 const name = document.createElement('span');
@@ -570,7 +571,21 @@ document.querySelectorAll('[data-claim-wizard]').forEach((wizard) => {
             const name = area.querySelector('title')?.textContent || 'panel';
             area.setAttribute('aria-label', `${selected ? 'Deselect' : 'Select'} ${name}`);
         });
+        const selectedArea = panelInputs.filter((input) => input.checked)
+            .reduce((total, input) => total + Number(input.dataset.panelArea || 0), 0);
+        const modelLimit = Number(selectedModelData?.coverage_sqm || 0);
+        const limitToast = wizard.querySelector('[data-panel-limit-toast]');
+        if (limitToast) {
+            const exceeded = modelLimit > 0 && selectedArea > modelLimit;
+            limitToast.hidden = !exceeded;
+            limitToast.querySelector('span').textContent = exceeded
+                ? `Selected panels total ${selectedArea.toFixed(2)} m², which is above this model's ${modelLimit.toFixed(2)} m² limit.` : '';
+        }
     };
+
+    wizard.querySelector('[data-panel-limit-toast] button')?.addEventListener('click', (event) => {
+        event.currentTarget.closest('[data-panel-limit-toast]').hidden = true;
+    });
 
     wizard.querySelectorAll('[data-panel-shape]').forEach((shape) => shape.addEventListener('click', () => {
         const input = wizard.querySelector(`[data-panel-input][value="${shape.dataset.panelShape}"]`);
@@ -924,11 +939,12 @@ document.querySelectorAll('[data-catalog-panels]').forEach((container) => {
         const row = document.createElement('div');
         row.className = 'catalog-panel-row';
         row.dataset.catalogPanelRow = '';
-        [['Panel name', 'name', 'text']].forEach(([labelText, key, type]) => {
+        [['Panel name', 'name', 'text'], ['Area limit (m²)', 'area_limit_sqm', 'number']].forEach(([labelText, key, type]) => {
             const field = document.createElement('div'); field.className = 'field';
             const label = document.createElement('label'); label.textContent = labelText;
             const control = document.createElement('div'); control.className = 'field__control';
             const input = document.createElement('input'); input.name = `panels[${index}][${key}]`; input.type = type; input.required = true;
+            if (type === 'number') { input.min = '0'; input.max = '100'; input.step = '0.01'; input.value = '0'; }
             control.append(input); field.append(label, control); row.append(field);
         });
         const position = document.createElement('div'); position.className = 'catalog-panel-position';

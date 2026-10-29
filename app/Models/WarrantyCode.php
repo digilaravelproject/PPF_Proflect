@@ -11,7 +11,7 @@ class WarrantyCode extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['code', 'subscription_id', 'is_active', 'validity_months', 'activated_at', 'expires_at', 'used_by_user_id', 'used_at'];
+    protected $fillable = ['code', 'subscription_id', 'ppf_variant_id', 'is_active', 'validity_months', 'activated_at', 'expires_at', 'used_by_user_id', 'used_at'];
 
     protected function casts(): array
     {
@@ -33,10 +33,15 @@ class WarrantyCode extends Model
         return $this->hasOne(Claim::class);
     }
 
+    public function ppfVariant(): BelongsTo
+    {
+        return $this->belongsTo(PpfVariant::class);
+    }
+
     public function getStatusAttribute(): string
     {
         if ($this->trashed()) return 'deleted';
-        if ($this->used_at) return 'used';
+        if ($this->claim()->exists()) return 'used';
         if (! $this->is_active) return 'inactive';
         if (! $this->expires_at || $this->expires_at->isPast()) return 'expired';
 
@@ -47,6 +52,14 @@ class WarrantyCode extends Model
     {
         return ! $this->trashed()
             && ! $this->used_at
+            && $this->is_active
+            && $this->expires_at?->isFuture();
+    }
+
+    public function isAvailableForClaim(): bool
+    {
+        return ! $this->trashed()
+            && ! $this->claim()->exists()
             && $this->is_active
             && $this->expires_at?->isFuture();
     }

@@ -14,7 +14,7 @@
         </div>
         <div><h3>Available panels</h3><p class="catalog-help">Model area limit: {{ number_format($model->coverage_sqm, 2) }} m² (all selected panels combined)</p><div class="catalog-panel-list">
             @foreach($model->panels as $panel)
-                <div><b>{{ $panel->name }}</b></div>
+                <div><b>{{ $panel->name }}</b><span>{{ number_format((float) $panel->area_limit_sqm, 2) }} m²</span></div>
             @endforeach
         </div></div>
     </section>
