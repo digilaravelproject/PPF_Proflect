@@ -57,14 +57,59 @@
 /* Responsive layout */
 @media (max-width: 768px) {
     .landing-film {
-        height: 60vh !important;
-        min-height: 350px;
+        height: auto !important;
+        min-height: 0;
         max-height: none;
+        aspect-ratio: 16 / 9 !important;
+        background: #000;
+    }
+
+    .landing-film__media {
+        object-fit: contain;
     }
 
     .landing-films {
         padding-left: 16px;
         padding-right: 16px;
+    }
+}
+
+@media (max-width: 520px) {
+    .landing-film__topline {
+        top: 12px;
+        right: 12px;
+        left: 12px;
+    }
+
+    .landing-film__number {
+        min-height: 24px;
+        padding-inline: 9px;
+        font-size: 7px;
+    }
+
+    .landing-film__content {
+        right: 14px;
+        bottom: 13px;
+        left: 14px;
+        gap: 11px;
+    }
+
+    .landing-film__play {
+        width: 42px;
+        height: 42px;
+    }
+
+    .landing-film__copy small {
+        margin-bottom: 4px;
+        font-size: 6px;
+    }
+
+    .landing-film__copy b {
+        font-size: 18px;
+    }
+
+    .landing-film__copy > span {
+        display: none;
     }
 }
 
