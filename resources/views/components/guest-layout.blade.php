@@ -32,7 +32,7 @@
                 <span class="road-art__line road-art__line--two"></span>
                 <span class="road-art__wheel"></span>
             </div>
-            <p class="auth-visual__footer">Drive Protected. Always.</p>
+            <p class="auth-visual__footer" style="margin-top: 13%!important;">Drive Protected. Always.</p>
         </section>
         <section class="auth-panel">
             <div class="auth-panel__mobile-brand"><x-brand /></div>

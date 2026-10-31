@@ -45,6 +45,6 @@
         <button type="submit" class="button button--primary">Sign in <span aria-hidden="true">→</span></button>
     </form>
 
-    <p class="form-switch">New to Proflect? <a href="{{ route('register') }}">Create an account</a></p>
+    <p class="form-switch">New User <a href="{{ route('register') }}">- Create New Account</a></p>
     <div class="trust-note"><span>✓</span><p><b>Your details stay protected</b><br>Encrypted and securely handled.</p></div>
 </x-guest-layout>
