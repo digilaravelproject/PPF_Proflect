@@ -40,7 +40,7 @@ class QrAccessTest extends TestCase
     public function test_valid_qr_entry_unlocks_the_session(): void
     {
         $this->get(route('qr-access.enter', ['token' => QrAccess::token()]))
-            ->assertRedirect(route('home'))
+            ->assertRedirect(route('login'))
             ->assertSessionHas(config('qr_access.session_key'), true);
 
         $this->get('/')->assertOk();

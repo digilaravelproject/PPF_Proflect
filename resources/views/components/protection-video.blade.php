@@ -8,7 +8,7 @@
             <img class="landing-film__media" src="{{ asset('images/care-refresh-program-cover.jpg') }}" alt="Proflect Car Refresh Program video cover">
             <span class="landing-film__veil"></span>
             <span class="landing-film__topline"><span class="landing-film__number">FILM 01</span><span class="landing-film__watch">WATCH NOW <b>↗</b></span></span>
-            <span class="landing-film__content"><span class="landing-film__play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 7.5 16 12l-7 4.5z"/></svg></span><span class="landing-film__copy"><small>01:18 · THE PROFLECT STORY</small><b>The Proflect Warranty</b><span>Thanks for creating your account, please watch me.</span></span></span>
+            <span class="landing-film__play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 7.5 16 12l-7 4.5z"/></svg></span>
             <span class="sr-only">Play The Proflect Warranty video</span>
         </button>
     </div>

@@ -23,6 +23,6 @@ class QrAccessController extends Controller
         $request->session()->put((string) config('qr_access.session_key'), true);
         $request->session()->regenerate();
 
-        return redirect()->route('home');
+        return redirect()->route('login');
     }
 }
