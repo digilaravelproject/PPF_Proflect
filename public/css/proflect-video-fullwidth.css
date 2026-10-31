@@ -22,10 +22,10 @@
     width: 100% !important;
     max-width: none !important;
     min-width: 0;
-    height: 80vh !important;
-    min-height: 480px;
-    max-height: 900px;
-    aspect-ratio: auto !important;
+    height: auto !important;
+    min-height: 0;
+    max-height: none;
+    aspect-ratio: 16 / 9 !important;
     overflow: hidden;
     box-sizing: border-box;
 }

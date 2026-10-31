@@ -12,7 +12,7 @@ class RequireQrAccess
     public function handle(Request $request, Closure $next): Response
     {
         if (! QrAccess::enabled()
-            || $request->routeIs('qr-code.show', 'qr-code.legacy', 'qr-access.enter')
+            || $request->routeIs('home', 'qr-code.show', 'qr-code.legacy', 'qr-access.enter')
             || $request->is('admin', 'admin/*', 'payments/stripe/webhook')
             || $request->session()->get((string) config('qr_access.session_key')) === true) {
             return $next($request);

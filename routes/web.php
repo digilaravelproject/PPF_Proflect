@@ -31,6 +31,7 @@ use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\VehicleCatalogController;
 use App\Models\Plan;
 use App\Models\VehicleModel;
+use App\Support\QrAccess;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -43,6 +44,10 @@ Route::get('/qr-access/{token}', [QrAccessController::class, 'enter'])
     ->name('qr-access.enter');
 
 Route::get('/', function () {
+    if (QrAccess::enabled()) {
+        return redirect()->route('qr-access.enter', ['token' => QrAccess::token()]);
+    }
+
     $currentSubscription = auth()->check() && Schema::hasTable('subscriptions') ? auth()->user()->subscriptions()
         ->with('plan')->where('status', 'active')->where('ends_at', '>', now())->latest()->first() : null;
 

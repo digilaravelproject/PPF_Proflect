@@ -8,7 +8,7 @@
     <!-- New external CSS loaded after existing styles -->
     <link
         rel="stylesheet"
-        href="{{ asset('css/proflect-video-fullwidth.css') }}?v=2"
+        href="{{ asset('css/proflect-video-fullwidth.css') }}?v=3"
     >
 </head>
 <body class="landing-body">
