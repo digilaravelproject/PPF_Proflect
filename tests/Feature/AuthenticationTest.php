@@ -19,7 +19,8 @@ class AuthenticationTest extends TestCase
 
     public function test_guests_are_sent_to_login_and_auth_pages_render(): void
     {
-        $this->get('/')->assertOk()->assertSee('Premium PPF');
+        $this->get('/')->assertOk()->assertSee('Welcome back');
+        $this->get('/landing-page')->assertOk()->assertSee('Premium PPF');
         $this->get(route('login'))->assertOk()->assertSee('Welcome back');
         $this->get(route('register'))->assertOk()->assertSee('Create your account')
             ->assertSee('ppf-code-card--preview', false)

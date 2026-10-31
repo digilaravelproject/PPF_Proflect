@@ -22,7 +22,7 @@ class PortalWorkflowTest extends TestCase
 
     public function test_public_landing_page_is_available(): void
     {
-        $this->get('/')->assertOk()->assertSee('Premium PPF')->assertSee('Get protected');
+        $this->get('/landing-page')->assertOk()->assertSee('Premium PPF')->assertSee('Get protected');
     }
 
     public function test_overview_and_warranty_are_separate_customer_pages(): void

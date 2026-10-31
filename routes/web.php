@@ -31,7 +31,6 @@ use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\VehicleCatalogController;
 use App\Models\Plan;
 use App\Models\VehicleModel;
-use App\Support\QrAccess;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -43,11 +42,14 @@ Route::get('/qr-access/{token}', [QrAccessController::class, 'enter'])
     ->middleware('throttle:30,1')
     ->name('qr-access.enter');
 
-Route::get('/', function () {
-    if (QrAccess::enabled()) {
-        return redirect()->route('qr-access.enter', ['token' => QrAccess::token()]);
-    }
+Route::get('/', [AuthenticatedSessionController::class, 'create'])
+    ->middleware('guest')
+    ->name('login');
+Route::post('/', [AuthenticatedSessionController::class, 'store'])
+    ->middleware('guest')
+    ->name('login.store');
 
+Route::get('/landing-page', function () {
     $currentSubscription = auth()->check() && Schema::hasTable('subscriptions') ? auth()->user()->subscriptions()
         ->with('plan')->where('status', 'active')->where('ends_at', '>', now())->latest()->first() : null;
 
@@ -70,8 +72,8 @@ Route::get('/vehicle-models/{model}/photo', function (VehicleModel $model) {
 Route::post('/payments/stripe/webhook', [PaymentController::class, 'webhook'])->name('payments.webhook');
 
 Route::middleware('guest')->group(function () {
-    Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
-    Route::post('/login', [AuthenticatedSessionController::class, 'store']);
+    Route::get('/login', fn () => redirect()->route('login'))->name('login.legacy');
+    Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('login.store.legacy');
 
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
     Route::post('/register', [RegisteredUserController::class, 'store']);

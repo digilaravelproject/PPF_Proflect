@@ -20,8 +20,7 @@ class QrAccessController extends Controller
     {
         abort_unless(hash_equals(QrAccess::token(), $token), 404);
 
-        $request->session()->put((string) config('qr_access.session_key'), true);
-        $request->session()->regenerate();
+        QrAccess::grant($request);
 
         return redirect()->route('login');
     }

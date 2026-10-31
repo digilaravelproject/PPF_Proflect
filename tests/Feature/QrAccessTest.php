@@ -31,19 +31,17 @@ class QrAccessTest extends TestCase
             ->assertSee($entryUrl, false);
     }
 
-    public function test_printed_root_qr_enters_access_flow_while_direct_login_is_gated(): void
+    public function test_base_url_displays_login_and_legacy_login_redirects_to_it(): void
     {
-        $this->get('/')->assertRedirect(route('qr-access.enter', ['token' => QrAccess::token()]));
-        $this->get('/login')->assertRedirect(route('qr-code.show'));
+        $this->get('/')->assertOk()->assertSee('Welcome back');
+        $this->get('/login')->assertRedirect(route('login'));
     }
 
-    public function test_printed_root_qr_finishes_on_login_without_changing_the_qr_url(): void
+    public function test_landing_page_has_its_own_url(): void
     {
-        $this->followingRedirects()
-            ->get('/')
+        $this->get('/landing-page')
             ->assertOk()
-            ->assertSee('Welcome back')
-            ->assertSessionHas(config('qr_access.session_key'), true);
+            ->assertSee('Premium PPF');
     }
 
     public function test_valid_qr_entry_unlocks_the_session(): void
@@ -52,13 +50,13 @@ class QrAccessTest extends TestCase
             ->assertRedirect(route('login'))
             ->assertSessionHas(config('qr_access.session_key'), true);
 
-        $this->get('/login')->assertOk();
+        $this->get('/')->assertOk();
     }
 
     public function test_invalid_qr_entry_does_not_unlock_the_session(): void
     {
         $this->get('/qr-access/invalid-token-12345678901234567890')->assertNotFound();
-        $this->get('/login')->assertRedirect(route('qr-code.show'));
+        $this->get('/register')->assertRedirect(route('qr-code.show'));
     }
 
     public function test_admin_routes_are_not_blocked_by_the_customer_qr_gate(): void

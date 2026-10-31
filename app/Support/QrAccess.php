@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\WarrantyCodeSetting;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use RuntimeException;
 
@@ -44,5 +45,11 @@ class QrAccess
         $entryPath = route('qr-access.enter', ['token' => self::token()], false);
 
         return rtrim((string) config('app.url'), '/').$entryPath;
+    }
+
+    public static function grant(Request $request): void
+    {
+        $request->session()->put((string) config('qr_access.session_key'), true);
+        $request->session()->regenerate();
     }
 }

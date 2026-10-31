@@ -12,7 +12,7 @@ class ExampleTest extends TestCase
      */
     public function test_the_application_shows_the_public_landing_page(): void
     {
-        $response = $this->get('/');
+        $response = $this->get('/landing-page');
 
         $response->assertOk()->assertSee('Premium PPF');
     }
