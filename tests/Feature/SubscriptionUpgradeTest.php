@@ -69,7 +69,7 @@ class SubscriptionUpgradeTest extends TestCase
         WarrantyCode::create(['code' => '10101', 'used_by_user_id' => $user->id, 'used_at' => now(), 'is_active' => true, 'validity_months' => 12, 'activated_at' => now(), 'expires_at' => now()->addYear()]);
 
         $this->actingAs($user)->get(route('subscription.index'))->assertOk()
-            ->assertSee('Protection you can see.')->assertSee('Current plan')->assertSee('proflect-video-poster.jpg');
+            ->assertSee('🎬 Is your car actually covered? Let Zac explain')->assertSee('Current plan')->assertSee('proflect-video-poster.jpg');
     }
 
     private function plan(string $name, string $slug, int $price): Plan

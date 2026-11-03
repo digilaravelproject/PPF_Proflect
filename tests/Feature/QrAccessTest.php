@@ -2,11 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use App\Support\QrAccess;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class QrAccessTest extends TestCase
 {
+    use RefreshDatabase;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -31,10 +35,11 @@ class QrAccessTest extends TestCase
             ->assertSee($entryUrl, false);
     }
 
-    public function test_base_url_displays_login_and_legacy_login_redirects_to_it(): void
+    public function test_base_url_displays_registration_and_legacy_registration_redirects_to_it(): void
     {
-        $this->get('/')->assertOk()->assertSee('Welcome back');
-        $this->get('/login')->assertRedirect(route('login'));
+        $this->get('/')->assertOk()->assertSee('Create your account');
+        $this->get('/register')->assertRedirect(route('register'));
+        $this->get('/login')->assertOk()->assertSee('Welcome back');
     }
 
     public function test_landing_page_has_its_own_url(): void
@@ -47,16 +52,30 @@ class QrAccessTest extends TestCase
     public function test_valid_qr_entry_unlocks_the_session(): void
     {
         $this->get(route('qr-access.enter', ['token' => QrAccess::token()]))
-            ->assertRedirect(route('login'))
+            ->assertRedirect(route('register'))
             ->assertSessionHas(config('qr_access.session_key'), true);
 
         $this->get('/')->assertOk();
     }
 
+    public function test_valid_qr_entry_logs_out_an_existing_customer_and_displays_registration(): void
+    {
+        $user = User::factory()->create(['onboarding_completed_at' => now()]);
+
+        $this->actingAs($user)
+            ->get(route('qr-access.enter', ['token' => QrAccess::token()]))
+            ->assertRedirect(route('register'))
+            ->assertSessionHas(config('qr_access.session_key'), true);
+
+        $this->assertGuest();
+        $this->get(route('register'))->assertOk()->assertSee('Create your account');
+    }
+
     public function test_invalid_qr_entry_does_not_unlock_the_session(): void
     {
         $this->get('/qr-access/invalid-token-12345678901234567890')->assertNotFound();
-        $this->get('/register')->assertRedirect(route('qr-code.show'));
+        $this->get('/')->assertOk()->assertSee('Create your account');
+        $this->get('/forgot-password')->assertRedirect(route('qr-code.show'));
     }
 
     public function test_admin_routes_are_not_blocked_by_the_customer_qr_gate(): void

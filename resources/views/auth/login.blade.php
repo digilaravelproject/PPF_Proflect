@@ -11,7 +11,7 @@
         <div class="alert alert--success" role="status">{{ session('status') }}</div>
     @endif
 
-    <form method="POST" action="{{ route('login') }}" class="auth-form">
+    <form method="POST" action="{{ route('login.store') }}" class="auth-form">
         @csrf
         <div class="field">
             <label for="email">Email address</label>

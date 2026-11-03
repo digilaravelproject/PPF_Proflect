@@ -54,6 +54,6 @@ class AdminQrAccessSettingTest extends TestCase
         $this->assertTrue(WarrantyCodeSetting::findOrFail(1)->qr_access_enabled);
         Auth::guard('admin')->logout();
         Auth::shouldUse('web');
-        $this->get('/')->assertOk()->assertSee('Welcome back');
+        $this->get('/')->assertOk()->assertSee('Create your account');
     }
 }

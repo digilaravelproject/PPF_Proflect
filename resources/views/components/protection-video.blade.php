@@ -1,14 +1,11 @@
 <section class="landing-films subscription-video" id="films" aria-labelledby="films-title">
-    <div class="landing-films__heading">
-        <div><span class="eyebrow">SEE THE REFRESH</span><h2 id="films-title">Protection you can see.</h2></div>
-        <div class="landing-films__intro"><span>PROFLECT FILM</span><p>Discover how Proflect helps preserve the details that make your vehicle feel exceptional.</p></div>
-    </div>
+    <h2 class="landing-films__prompt" id="films-title">🎬 Is your car actually covered? Let Zac explain</h2>
     <div class="landing-film-grid landing-film-grid--single">
         <button class="landing-film landing-film--one" type="button" data-video-open data-video-src="{{ asset('videos/care-refresh-01.mp4') }}" data-video-title="The Proflect Warranty">
             <img class="landing-film__media" src="{{ asset('images/care-refresh-program-cover.jpg') }}" alt="Proflect Car Refresh Program video cover">
             <span class="landing-film__veil"></span>
             <span class="landing-film__topline"><span class="landing-film__number">FILM 01</span><span class="landing-film__watch">WATCH NOW <b>↗</b></span></span>
-            <span class="landing-film__play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 7.5 16 12l-7 4.5z"/></svg></span>
+            <span class="landing-film__play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 5 19 12 7 19z"/></svg></span>
             <span class="landing-film__content"><span class="landing-film__copy"><small>01:18 · THE PROFLECT STORY</small><b>The Proflect Warranty</b><span>Thanks for creating your account, please watch me.</span></span></span>
             <span class="sr-only">Play The Proflect Warranty video</span>
         </button>

@@ -17,9 +17,9 @@ class AuthenticationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_guests_are_sent_to_login_and_auth_pages_render(): void
+    public function test_signup_is_the_base_url_and_auth_pages_render(): void
     {
-        $this->get('/')->assertOk()->assertSee('Welcome back');
+        $this->get('/')->assertOk()->assertSee('Create your account');
         $this->get('/landing-page')->assertOk()->assertSee('Premium PPF');
         $this->get(route('login'))->assertOk()->assertSee('Welcome back');
         $this->get(route('register'))->assertOk()->assertSee('Create your account')

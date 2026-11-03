@@ -276,3 +276,9 @@ body{background:#f7f5f0}
 .qr-toggle{display:flex;align-items:center;justify-content:space-between;gap:24px;border:1px solid #45423c;border-radius:10px;padding:18px 20px;background:#202020;cursor:pointer}.qr-toggle>span{display:flex;flex-direction:column;gap:5px}.qr-toggle b{color:#f7f3ea}.qr-toggle small{color:#aaa59d}.qr-toggle input{position:absolute;opacity:0;pointer-events:none}.qr-toggle i{position:relative;width:54px;height:30px;flex:0 0 auto;border-radius:999px;background:#57534d;transition:background .2s}.qr-toggle i:after{content:"";position:absolute;top:4px;left:4px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .2s}.qr-toggle input:checked+i{background:#dba342}.qr-toggle input:checked+i:after{transform:translateX(24px)}.qr-toggle input:focus-visible+i{outline:2px solid #efbf67;outline-offset:3px}
 @media(max-width:1050px){.admin-qr-grid{grid-template-columns:1fr}.admin-qr-preview{justify-content:flex-start}.admin-qr-code{width:min(310px,42vw)!important}}
 @media(max-width:620px){.admin-qr-preview{align-items:flex-start;flex-direction:column}.admin-qr-code{width:min(310px,100%)!important}}
+
+/* Shared video section prompt and play icon. */
+.landing-films__prompt{position:relative;z-index:1;margin:0 0 48px;color:#f7f3ea;font:500 clamp(30px,3.2vw,48px)/1.12 Georgia,serif;letter-spacing:-.025em}
+.subscription-video .landing-films__prompt{width:min(1380px,100%);margin:0 auto 28px}
+.landing-film__play svg{width:36px;height:36px;fill:currentColor}
+@media(max-width:520px){.landing-films__prompt{margin-bottom:28px;font-size:26px}.landing-film__play{width:48px;height:48px}.landing-film__play svg{width:30px;height:30px}}

@@ -42,13 +42,6 @@ Route::get('/qr-access/{token}', [QrAccessController::class, 'enter'])
     ->middleware('throttle:30,1')
     ->name('qr-access.enter');
 
-Route::get('/', [AuthenticatedSessionController::class, 'create'])
-    ->middleware('guest')
-    ->name('login');
-Route::post('/', [AuthenticatedSessionController::class, 'store'])
-    ->middleware('guest')
-    ->name('login.store');
-
 Route::get('/landing-page', function () {
     $currentSubscription = auth()->check() && Schema::hasTable('subscriptions') ? auth()->user()->subscriptions()
         ->with('plan')->where('status', 'active')->where('ends_at', '>', now())->latest()->first() : null;
@@ -72,12 +65,14 @@ Route::get('/vehicle-models/{model}/photo', function (VehicleModel $model) {
 Route::post('/payments/stripe/webhook', [PaymentController::class, 'webhook'])->name('payments.webhook');
 
 Route::middleware('guest')->group(function () {
-    Route::get('/login', fn () => redirect()->route('login'))->name('login.legacy');
-    Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('login.store.legacy');
-
-    Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
-    Route::post('/register', [RegisteredUserController::class, 'store']);
+    Route::get('/', [RegisteredUserController::class, 'create'])->name('register');
+    Route::post('/', [RegisteredUserController::class, 'store'])->name('register.store');
+    Route::get('/register', fn () => redirect()->route('register'))->name('register.legacy');
+    Route::post('/register', [RegisteredUserController::class, 'store'])->name('register.store.legacy');
     Route::post('/register/warranty-code/check', [RegisteredUserController::class, 'checkWarrantyCode'])->middleware('throttle:30,1')->name('register.warranty-code.check');
+
+    Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
+    Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('login.store');
 
     Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
     Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])->name('password.email');

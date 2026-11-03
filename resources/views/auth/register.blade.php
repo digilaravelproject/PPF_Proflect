@@ -7,7 +7,7 @@
         <p>Join Proflect and keep your protection close.</p>
     </div>
 
-    <form method="POST" action="{{ route('register') }}" class="auth-form auth-form--compact" data-registration-form data-warranty-check-url="{{ route('register.warranty-code.check') }}">
+    <form method="POST" action="{{ route('register.store') }}" class="auth-form auth-form--compact" data-registration-form data-warranty-check-url="{{ route('register.warranty-code.check') }}">
         @csrf
         <div class="field">
             <label for="name">Full name</label>

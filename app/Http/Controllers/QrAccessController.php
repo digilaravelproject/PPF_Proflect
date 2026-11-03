@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Support\QrAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 class QrAccessController extends Controller
@@ -20,8 +21,12 @@ class QrAccessController extends Controller
     {
         abort_unless(hash_equals(QrAccess::token(), $token), 404);
 
+        Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
         QrAccess::grant($request);
 
-        return redirect()->route('login');
+        return redirect()->route('register');
     }
 }
