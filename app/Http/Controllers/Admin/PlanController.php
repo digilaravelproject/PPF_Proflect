@@ -59,7 +59,8 @@ class PlanController extends Controller
             'name' => ['required', 'string', 'max:100'], 'slug' => ['nullable', 'string', 'max:120', Rule::unique('plans')->ignore($plan)],
             'description' => ['nullable', 'string', 'max:1000'], 'price_aud' => ['required', 'numeric', 'min:0', 'max:10000000'],
             'offer_percentage' => ['nullable', 'integer', 'min:0', 'max:99'],
-            'duration_years' => ['required', 'integer', 'min:0', 'max:20'], 'duration_days' => ['nullable', 'integer', 'min:1', 'max:3650'], 'coverage_sqm' => ['required', 'numeric', 'min:0', 'max:9999'],
+            'duration_years' => ['required', 'integer', 'min:0', 'max:20'], 'duration_days' => ['nullable', 'integer', 'min:1', 'max:3650'], 'coverage_sqm' => ['nullable', 'numeric', 'min:0', 'max:9999'],
+            'free_price_label' => ['nullable', 'string', 'max:100'],
             'features_text' => ['nullable', 'string', 'max:3000'], 'accent' => ['required', Rule::in(['silver', 'gold', 'black'])],
             'is_active' => ['nullable', 'boolean'], 'sort_order' => ['required', 'integer', 'min:0', 'max:999'],
         ]);
@@ -69,9 +70,6 @@ class PlanController extends Controller
         }
         if ((int) $data['duration_years'] === 0 && empty($data['duration_days'])) {
             throw ValidationException::withMessages(['duration_days' => 'Enter a duration in days when duration in years is zero.']);
-        }
-        if ((float) $data['price_aud'] === 0.0 && empty($data['duration_days'])) {
-            throw ValidationException::withMessages(['duration_days' => 'Free plans must have a duration in days.']);
         }
         if ((float) $data['price_aud'] === 0.0 && (int) ($data['offer_percentage'] ?? 0) > 0) {
             throw ValidationException::withMessages(['offer_percentage' => 'Offers can only be added to paid plans.']);
@@ -86,7 +84,9 @@ class PlanController extends Controller
             'price' => $price, 'offer_percentage' => $offerPercentage,
             'currency' => 'AUD', 'duration_years' => $data['duration_years'],
             'duration_days' => $data['duration_days'] ?? null,
-            'coverage_sqm' => $data['coverage_sqm'], 'features' => array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $data['features_text'] ?? '')))),
+            'coverage_sqm' => $data['coverage_sqm'] ?? null,
+            'free_price_label' => filled($data['free_price_label'] ?? null) ? trim($data['free_price_label']) : null,
+            'features' => array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $data['features_text'] ?? '')))),
             'accent' => $data['accent'], 'is_active' => $request->boolean('is_active'), 'sort_order' => $data['sort_order']];
     }
 }

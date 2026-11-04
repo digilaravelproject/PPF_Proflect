@@ -84,7 +84,7 @@ class SubscriptionController extends Controller
 
     public function activateFree(Request $request, Plan $plan, CustomerNotificationService $notifications, WarrantyCodeService $codes, PendingClaimService $pendingClaims): RedirectResponse
     {
-        abort_unless($plan->is_active && $plan->is_free && $plan->duration_days, 404);
+        abort_unless($plan->is_active && $plan->is_free && ($plan->duration_days || $plan->duration_years), 404);
         $validated = $request->validate(['warranty_code_id' => ['nullable', 'integer']]);
         $selectedCodeId = $validated['warranty_code_id'] ?? $request->session()->get('subscribing_warranty_code_id')
             ?? $request->user()->usedWarrantyCodes()->whereDoesntHave('claim')->value('id');

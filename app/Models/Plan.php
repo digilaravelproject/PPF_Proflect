@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Plan extends Model
 {
-    protected $fillable = ['name', 'slug', 'description', 'price', 'offer_percentage', 'currency', 'duration_years', 'duration_days', 'coverage_sqm', 'features', 'accent', 'is_active', 'sort_order'];
+    protected $fillable = ['name', 'slug', 'description', 'price', 'offer_percentage', 'currency', 'duration_years', 'duration_days', 'coverage_sqm', 'free_price_label', 'features', 'accent', 'is_active', 'sort_order'];
 
     protected function casts(): array
     {
@@ -41,6 +41,11 @@ class Plan extends Model
     public function getIsFreeAttribute(): bool
     {
         return $this->price === 0;
+    }
+
+    public function getDisplayFreePriceLabelAttribute(): string
+    {
+        return $this->free_price_label ?: 'FREE';
     }
 
     public function getDurationLabelAttribute(): string

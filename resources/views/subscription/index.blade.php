@@ -110,7 +110,7 @@
                     @if($plan->has_offer)<span class="offer-badge"><b>{{ $plan->offer_percentage }}%</b> OFF</span
                     >@endif
                     <div class="plan-price">
-                        @if($plan->is_free)<b class="free-price">FREE</b><span>no card<br />no payment</span>@else<sup
+                        @if($plan->is_free)<b class="free-price">{{ $plan->display_free_price_label }}</b><span>no card<br />no payment</span>@else<sup
                             >A$</sup
                         >
                         <div class="plan-price__values">
@@ -121,8 +121,8 @@
                         <span>AUD<br />one-time payment</span>@endif
                     </div>
                     <div class="plan-term">
-                        <b>{{ strtoupper($plan->duration_label) }}</b><span>•</span
-                        ><b>{{ rtrim(rtrim($plan->coverage_sqm,'0'),'.') }} SQ. METRES</b>
+                        <b>{{ strtoupper($plan->duration_label) }}</b>@if($plan->coverage_sqm !== null)<span>•</span
+                        ><b>{{ rtrim(rtrim($plan->coverage_sqm,'0'),'.') }} SQ. METRES</b>@endif
                     </div>
                     <ul>
                         @foreach($plan->features ?? [] as $feature)
@@ -141,7 +141,7 @@
                     >@elseif($plan->is_free)
                     <form method="POST" action="{{ route('subscription.free',$plan) }}">
                         @csrf<input type="hidden" name="warranty_code_id" value="{{ $selectedWarrantyCard->id }}"><button class="button button--dark" type="submit">
-                            Start free for {{ $plan->duration_days }} days <span>→</span>
+                            Start free for {{ $plan->duration_label }} <span>→</span>
                         </button>
                     </form>
                     @else<a class="button button--dark" href="{{ route('subscription.checkout', ['plan' => $plan, 'warranty_code_id' => $selectedWarrantyCard->id]) }}"

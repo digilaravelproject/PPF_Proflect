@@ -21,8 +21,9 @@
     <div class="field-grid">
         <div class="field"><label>Duration (years)</label><div class="field__control"><input type="number" min="0" name="duration_years" value="{{ old('duration_years', $plan->exists ? $plan->duration_years : 1) }}" required></div></div>
         <div class="field"><label>Duration (days) <small>Overrides years when entered</small></label><div class="field__control"><input type="number" min="1" name="duration_days" value="{{ old('duration_days', $plan->duration_days) }}" placeholder="e.g. 15 for a free trial"></div></div>
-        <div class="field"><label>Coverage (m²)</label><div class="field__control"><input type="number" step="0.01" name="coverage_sqm" value="{{ old('coverage_sqm', $plan->coverage_sqm ?: 5) }}" required></div></div>
+        <div class="field"><label>Coverage (m²) <small>Optional</small></label><div class="field__control"><input type="number" min="0" step="0.01" name="coverage_sqm" value="{{ old('coverage_sqm', $plan->coverage_sqm) }}"></div></div>
         <div class="field"><label>Card style</label><div class="field__control"><select name="accent"><option value="silver" @selected(old('accent', $plan->accent) === 'silver')>Silver</option><option value="gold" @selected(old('accent', $plan->accent) === 'gold')>Gold</option><option value="black" @selected(old('accent', $plan->accent) === 'black')>Black</option></select></div></div>
+        <div class="field"><label>Free price text <small>Shown instead of FREE on zero-price plan cards</small></label><div class="field__control"><input name="free_price_label" maxlength="100" value="{{ old('free_price_label', $plan->free_price_label) }}" placeholder="FREE"></div></div>
     </div>
     <div class="field"><label>Description</label><textarea name="description" rows="3">{{ old('description', $plan->description) }}</textarea></div>
     <div class="field"><label>Features <small>One per line</small></label><textarea name="features_text" rows="6">{{ old('features_text', implode("\n", $plan->features ?? [])) }}</textarea></div>

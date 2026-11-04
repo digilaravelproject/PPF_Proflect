@@ -159,6 +159,35 @@ class PortalWorkflowTest extends TestCase
         $this->assertDatabaseMissing('plans', ['slug' => 'invalid-free-offer']);
     }
 
+    public function test_admin_can_leave_free_plan_days_and_coverage_blank_and_customize_its_card_text(): void
+    {
+        $admin = Admin::create(['name' => 'Admin', 'email' => 'free-plan@ppf.com', 'password' => 'admin123']);
+
+        $this->actingAs($admin, 'admin')->post(route('admin.plans.store'), [
+            'name' => 'Included Plan',
+            'price_aud' => 0,
+            'duration_years' => 10,
+            'duration_days' => '',
+            'coverage_sqm' => '',
+            'free_price_label' => 'INCLUDED',
+            'accent' => 'black',
+            'is_active' => 1,
+            'sort_order' => 10,
+        ])->assertRedirect(route('admin.plans.index'));
+
+        $plan = Plan::query()->where('slug', 'included-plan')->firstOrFail();
+        $this->assertNull($plan->duration_days);
+        $this->assertNull($plan->coverage_sqm);
+        $this->assertSame('INCLUDED', $plan->display_free_price_label);
+
+        auth('admin')->logout();
+        $this->get('/landing-page')
+            ->assertOk()
+            ->assertSee('INCLUDED')
+            ->assertSee('10 YEARS')
+            ->assertDontSee('0 SQ. METRES');
+    }
+
     public function test_failed_stripe_verification_never_activates_a_subscription(): void
     {
         $user = User::factory()->create();
